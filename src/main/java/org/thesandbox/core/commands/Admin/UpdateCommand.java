@@ -143,6 +143,7 @@ public class UpdateCommand implements ISubCommand {
             discord.sendGenericEmbed(message,Color.MAGENTA, sender.getName(), url, "Logs");
         }
     }
+    //survival!
 
     @Override
     public List<String> tabComplete(CommandSender sender, Command command, String alias, String[] args) {
