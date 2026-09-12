@@ -12,12 +12,14 @@ public class LoginService {
 
     // ===== Ranks =====
     public enum Rank {
-        DEFAULT("Player", "&7"),
-        VIP("VIP", "&5"),
-        MB("Master Builder", "&3"),
-        STAFF("Staff", "&6"),
-        ADMIN("Admin", "&c"),
-        OPERATOR("Operator", "&4");
+        DEFAULT("Default", "&7"),
+        VIP("helper", "&5"),
+        MB("helper", "&3"),
+
+        DEVELOPER("developer", "&7"),
+        STAFF("admin", "&6"),
+        ADMIN("admin", "&c"),
+        OPERATOR("owner", "&4");
 
         /** Pretty display name (e.g., "Master Builder"). */
         public final String display;      // kept for backward compat

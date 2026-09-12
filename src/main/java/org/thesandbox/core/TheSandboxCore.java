@@ -10,7 +10,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
@@ -21,9 +20,6 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.thesandbox.core.fun.LoginMessages;
-import org.thesandbox.core.fun.items.itemUTILS.Item;
-import org.thesandbox.core.fun.items.itemUTILS.ItemKeys;
 import org.thesandbox.core.commands.CommandManager;
 import org.thesandbox.core.guilds.GuildManager;
 import org.thesandbox.core.login.LoginService;
@@ -44,7 +40,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
     private DataManager dataManager;
     private PlayerDataListener dataListener;
 
-    private LoginMessages loginMessages;
 
     private HikariDataSource dataSource; // HIKARI O NAKAMA DESU - "Montagem Hikari"
 
@@ -97,7 +92,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
     // Getter so commands (e.g., ReportCommand) can access the Discord bridge
     public DiscordBridge getDiscord() { return this.discord; }
 
-    private List<Item> registeredItems = new ArrayList<>();
     public boolean isDiscordChatBridgeEnabled() {
         return getConfig().getBoolean("discord.chat-bridge.enabled", true);
     }
@@ -111,9 +105,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
             discord.applyChatBridgePermissionState();
         }
         return true;
-    }
-    public List<Item> getRegisteredItems() {
-        return this.registeredItems;
     }
 
     public File getPluginFile() {
@@ -131,11 +122,7 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
 
         getServer().getPluginManager().registerEvents(dataListener, this);
 
-        this.loginMessages = new LoginMessages(dataListener, this);
-        getServer().getPluginManager().registerEvents(this.loginMessages, this);
 
-        ItemKeys itemKeys = new ItemKeys(this);
-        this.registeredItems = ItemAutoRegistrar.registerAll(this, itemKeys, dataListener, loginMessages, configManager);
 
         // Initialize login service (rank lookup)
         loginService = new LoginService(this);
@@ -193,13 +180,10 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
                 this.shushService,
                 this.discord,
                 dataListener,
-                itemKeys,
-                loginMessages,
                 configManager
         ));
 
         // Command Auto Registrar + ItemAutoRegistrar
-        commandServices.addAll(this.registeredItems);
         CommandAutoRegistrar.registerAll(this, commandServices.toArray());
 
         setupRankScoreboardTeams();
@@ -643,7 +627,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
 
         if (!vanish_status) {
-            event.setJoinMessage(buildJoinMessageFor(p));
         } else {
             event.setJoinMessage(null);
         }
@@ -655,7 +638,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
 
         if (!vanish_status) {
-            event.setQuitMessage(buildLeaveMessageFor(p));
         } else {
             event.setQuitMessage(null);
         }
@@ -667,8 +649,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTask(this, () -> {
             // SAVE FOR PLAYER
             dataListener.set(p.getUniqueId(), PlayerDataKeys.VANISHED, true);
-            // Fake leave for everyone
-            Bukkit.broadcastMessage(buildLeaveMessageFor(p));
             // Staff-only notice
             String staffMsg = ChatColor.translateAlternateColorCodes(
                     '&', "&8[&b&lSTAFF&8] &c" + p.getName() + " vanished.");
@@ -686,9 +666,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTask(this, () -> {
             // SAVE FOR PLAYER
             dataListener.set(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
-            // Fake join (same formatting as normal joins)
-            Bukkit.broadcastMessage(buildJoinMessageFor(p));
-            LoginMessagesFakeLogin(p);
 
             // Staff-only notice
 
@@ -701,11 +678,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
             }
         });
     }
-
-    private void LoginMessagesFakeLogin(Player player) {
-        loginMessages.SendLoginMessage(player);
-    }
-
     @EventHandler
     public void onCommandPre(PlayerCommandPreprocessEvent event) {
         final Player sender = event.getPlayer();
