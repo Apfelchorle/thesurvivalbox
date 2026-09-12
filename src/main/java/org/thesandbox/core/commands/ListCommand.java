@@ -125,6 +125,7 @@ public class ListCommand implements ISubCommand
         return switch (rank == null ? LoginService.Rank.DEFAULT : rank) {
             case OPERATOR -> color("&4&lOP &8• &4" + name) + ChatColor.RESET + vanished;
             case ADMIN    -> color("&c&lADMIN &8• &c" + name) + ChatColor.RESET + vanished;
+            case DEVELOPER -> color("&5&lDEV &8• &5" + name) + ChatColor.RESET + vanished;
             case STAFF    -> color("&6&lSTAFF &8• &6" + name) + ChatColor.RESET + vanished;
             case MB       -> color("&3&lMB &8• &3" + name) + ChatColor.RESET + vanished;
             case VIP      -> color("&5&lVIP &8• &5" + name) + ChatColor.RESET + vanished;
