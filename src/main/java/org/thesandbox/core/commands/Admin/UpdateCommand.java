@@ -110,7 +110,7 @@ public class UpdateCommand implements ISubCommand {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
         conn.setRequestProperty("Accept", "application/vnd.github+json");
         conn.setRequestProperty("User-Agent", "TheSandboxCore-Updater");
-        conn.setRequestProperty("Authorization", "Bearer " + token);
+        //conn.setRequestProperty("Authorization", "Bearer " + token);
         return conn;
     }
 
