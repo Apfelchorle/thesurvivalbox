@@ -1,9 +1,9 @@
 name: Java CI with Gradle
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 permissions:
   contents: write
@@ -39,7 +39,7 @@ jobs:
           path: build/libs/*.jar
 
       - name: Create Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
           files: build/libs/*.jar
