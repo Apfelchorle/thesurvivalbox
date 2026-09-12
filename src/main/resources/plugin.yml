@@ -22,29 +22,14 @@ commands:
   dismount:
     description: Force dismount from an Entity.
     usage: /dismount
-
-  opall:
-    description: Op Everyone
-    usage: /opall
-    permission: sandbox.default
-    aliases: [freeop]
-
   discord:
     description: Sends Discord Invite
     usage: /discord
     permission: sandbox.default
     aliases: [ds]
-  jumppads:
-    description: Makes You Jump Like A Frog!
-    usage: /jumppads mode
-    permission: sandbox.default
-    aliases: [jp]
+
   coins:
     description: Displays Your Balance
-    permission: sandbox.default
-  shop:
-    description: Opens The Shop
-    usage: /shop
     permission: sandbox.default
   skull:
     description: Give yourself a player skull
@@ -197,11 +182,6 @@ commands:
     usage: /debugstick
     permission: sandbox.default
     aliases: [deb]
-
-  loginmessage:
-    description: Set Your Login Message!
-    permission: sandbox.default
-    alias: [lmsg]
 
   update:
     description: Update TheSandBoxCore Plugin
