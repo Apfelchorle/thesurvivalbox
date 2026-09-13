@@ -310,8 +310,9 @@ public class ChatMentionFormatListener implements Listener
             // Fall through to Bukkit display name.
         }
 
-        String displayName = p.getDisplayName();
-        return displayName == null || displayName.isBlank() ? p.getName() : displayName;
+//        String displayName = p.getDisplayName();
+//        return displayName == null || displayName.isBlank() ? p.getName() : displayName;
+        return p.getName();
     }
 
 
