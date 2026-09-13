@@ -1626,8 +1626,7 @@ public class DiscordBridge extends ListenerAdapter
 
         EmbedBuilder eb = new EmbedBuilder()
                 .setColor(new Color(50, 205, 50))
-                .setDescription("**:green_square: Server has started!**")
-                .setFooter("Survival");
+                .setDescription("**:green_square: Server has started!**");
         ch.sendMessageEmbeds(eb.build()).queue();
     }
 
