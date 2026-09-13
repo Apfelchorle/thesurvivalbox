@@ -1678,7 +1678,7 @@ public class DiscordBridge extends ListenerAdapter
 
         EmbedBuilder eb = new EmbedBuilder()
                 .setColor(new Color(0, 0, 0, 255))
-                .setAuthor(name + " Has Gone " + message, null, headurl);
+                .setAuthor(name + " " +  message, null, headurl);
         ch.sendMessageEmbeds(eb.build()).queue();
     }
 
@@ -1740,7 +1740,7 @@ public class DiscordBridge extends ListenerAdapter
             if (!vanish_status) {
                 sendPlayerJoinEmbed(p);
             } else {
-                sendVanishEmbed(p,"Ahead And Joined The Game");
+                sendGenericEmbed("joined the game while vanished", new Color(0,0,0,255), p.getName(),playerHeadUrl(p) , "Logs");
             }
         }
 
@@ -1751,7 +1751,7 @@ public class DiscordBridge extends ListenerAdapter
             if (!vanish_status) {
                 sendPlayerQuitEmbed(p);
             } else {
-                sendVanishEmbed(p,"Ahead And Quit The Game");
+                sendGenericEmbed("left the game while vanished", new Color(0,0,0,255), p.getName(),playerHeadUrl(p) , "Logs");
             }
         }
 
@@ -1759,13 +1759,13 @@ public class DiscordBridge extends ListenerAdapter
         @EventHandler
         public void onHide(PlayerHideEvent e) {
             sendPlayerQuitEmbed(e.getPlayer());
-            sendVanishEmbed(e.getPlayer(), "Incognito");
+            sendVanishEmbed(e.getPlayer(), "has **vanished**");
         }
 
         @EventHandler
         public void onShow(PlayerShowEvent e) {
             sendPlayerJoinEmbed(e.getPlayer());
-            sendVanishEmbed(e.getPlayer(), "cognito");
+            sendVanishEmbed(e.getPlayer(), "has **unvanished**");
         }
     }
 
