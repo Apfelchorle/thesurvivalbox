@@ -31,15 +31,6 @@ public class PlayerDataListener implements Listener {
         data.put(PlayerDataKeys.JUMPPADS_MODE, dataManager.loadData(uuid, PlayerDataKeys.JUMPPADS_MODE, "disabled"));
 
         // item ownership
-        data.put(PlayerDataKeys.LIGHTNING_ROD, dataManager.loadData(uuid, PlayerDataKeys.LIGHTNING_ROD, "not_owned"));
-        data.put(PlayerDataKeys.LOGIN_MESSAGE, dataManager.loadData(uuid, PlayerDataKeys.LOGIN_MESSAGE, ""));
-        data.put(PlayerDataKeys.LOGIN_MESSAGES_STATE, dataManager.loadData(uuid, PlayerDataKeys.LOGIN_MESSAGES_STATE, "not_owned"));
-        data.put(PlayerDataKeys.CLOWN_FISH, dataManager.loadData(uuid, PlayerDataKeys.CLOWN_FISH, "not_owned"));
-        data.put(PlayerDataKeys.RIDEABLE_ENDER_PEARL, dataManager.loadData(uuid, PlayerDataKeys.RIDEABLE_ENDER_PEARL, "not_owned"));
-        data.put(PlayerDataKeys.GRAPPLING_HOOK, dataManager.loadData(uuid, PlayerDataKeys.GRAPPLING_HOOK, "not_owned"));
-        data.put(PlayerDataKeys.Stacking_Potato, dataManager.loadData(uuid, PlayerDataKeys.Stacking_Potato, "not_owned"));
-        data.put(PlayerDataKeys.WIND_ROD, dataManager.loadData(uuid, PlayerDataKeys.WIND_ROD, "not_owned"));
-        data.put(PlayerDataKeys.FLOAT_BOAT, dataManager.loadData(uuid, PlayerDataKeys.FLOAT_BOAT, "not_owned"));
 
         // marriage
         data.put(PlayerDataKeys.MARRIAGE_SPOUSE, dataManager.loadData(uuid, PlayerDataKeys.MARRIAGE_SPOUSE, ""));

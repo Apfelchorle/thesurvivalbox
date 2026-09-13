@@ -180,7 +180,7 @@ commands:
   debugstick:
     description: Obtain a Debug Stick
     usage: /debugstick
-    permission: sandbox.default
+    permission: sandbox.superuser
     aliases: [deb]
 
   update:
@@ -344,12 +344,6 @@ commands:
     description: Marriage.
     permission: sandbox.default
     aliases: [marriage,]
-
-  masterbuilderworld:
-    description: Teleport to the masterbuilderworld.
-    usage: /masterbuilderworld
-    aliases: [mbw]
-    permission: sandbox.default
 
   gamemode:
     description: Change your or another player's gamemode

@@ -613,7 +613,7 @@ public class DiscordBridge extends ListenerAdapter
 
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     for (Player p : Bukkit.getOnlinePlayers()) {
-                        if (!p.hasPermission("sandbox.staff")) continue;
+                        if (!p.hasPermission("sandbox.moderator")) continue;
                         String perViewer = highlightDiscordMentionAmpersand(outAmpFull, p.getName(), "&f");
                         boolean ping = !perViewer.equals(outAmpFull);
                         p.sendMessage(HexColorUtil.translate(perViewer));
@@ -625,7 +625,7 @@ public class DiscordBridge extends ListenerAdapter
             } else {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     for (Player p : Bukkit.getOnlinePlayers()) {
-                        if (!p.hasPermission("sandbox.staff")) continue;
+                        if (!p.hasPermission("sandbox.moderator")) continue;
 
                         String perViewer = highlightDiscordMentionAmpersand(outAmpWithToken, p.getName(), "&f");
                         int i = perViewer.indexOf(MESSAGE_TOKEN);
@@ -1626,7 +1626,8 @@ public class DiscordBridge extends ListenerAdapter
 
         EmbedBuilder eb = new EmbedBuilder()
                 .setColor(new Color(50, 205, 50))
-                .setDescription("**:green_square: Server has started!**");
+                .setDescription("**:green_square: Server has started!**")
+                .setFooter("Survival");
         ch.sendMessageEmbeds(eb.build()).queue();
     }
 
@@ -1642,7 +1643,8 @@ public class DiscordBridge extends ListenerAdapter
         EmbedBuilder eb = new EmbedBuilder()
                 .setColor(new Color(255, 162, 0, 255))
                 .setAuthor("Requested By " + name, null, headUrl)
-                .setDescription("**:yellow_square: " + update_message + " **");
+                .setDescription("**:yellow_square: " + update_message + " **")
+                .setFooter("For Survival");
         ch.sendMessageEmbeds(eb.build()).queue();
     }
 
