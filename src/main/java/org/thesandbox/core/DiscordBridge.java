@@ -539,12 +539,13 @@ public class DiscordBridge extends ListenerAdapter
             }
         } catch (Throwable ignored) {
             // Fall back to direct permission checks if LoginService is unavailable.
+
             if (player != null) {
-                if (player.hasPermission("sandbox.operator")) rank = LoginService.Rank.OPERATOR;
+                if (player.hasPermission("sandbox.owner")) rank = LoginService.Rank.OWNER;
                 else if (player.hasPermission("sandbox.admin")) rank = LoginService.Rank.ADMIN;
-                else if (player.hasPermission("sandbox.staff")) rank = LoginService.Rank.STAFF;
-                else if (player.hasPermission("sandbox.mb")) rank = LoginService.Rank.MB;
-                else if (player.hasPermission("sandbox.vip")) rank = LoginService.Rank.VIP;
+                else if (player.hasPermission("sandbox.moderator")) rank = LoginService.Rank.MODERATOR;
+                else if (player.hasPermission("sandbox.helper")) rank = LoginService.Rank.HELPER;
+                else if (player.hasPermission("sandbox.developer")) rank = LoginService.Rank.DEVELOPER;
             }
         }
 
@@ -1583,8 +1584,8 @@ public class DiscordBridge extends ListenerAdapter
     private static boolean isStaffRank(LoginService.Rank r) {
         if (r == null) return false;
         return switch (r) {
-            case OPERATOR, ADMIN, STAFF -> true;
-            default -> false; // MB, VIP, and DEFAULT fall here
+            case OWNER, ADMIN, MODERATOR, HELPER, DEVELOPER -> true;
+            case DEFAULT -> false;
         };
     }
 
@@ -1610,12 +1611,12 @@ public class DiscordBridge extends ListenerAdapter
     private static String discordRankPrefix(LoginService.Rank r) {
         if (r == null) return "";
         return switch (r) {
-            case OPERATOR -> "**OP** • ";
-            case ADMIN    -> "**ADMIN** • ";
-            case STAFF    -> "**STAFF** • ";
-            case MB       -> "**MB** • ";
-            case VIP      -> "**VIP** • ";
-            default       -> "";
+            case OWNER     -> "**OP** • ";
+            case ADMIN     -> "**ADMIN** • ";
+            case MODERATOR -> "**STAFF** • ";
+            case HELPER    -> "**MB** • ";
+            case DEVELOPER -> "";
+            case DEFAULT   -> "";
         };
     }
 
@@ -1976,8 +1977,8 @@ public class DiscordBridge extends ListenerAdapter
         if (r == null) return null;
         switch (r) {
             case ADMIN: return ROLE_SRADMIN; // existing Discord Senior Admin role now represents Admin
-            case STAFF: return ROLE_MOD;     // existing Discord Moderator role now represents Staff
-            case MB:    return ROLE_MB;
+            case MODERATOR: return ROLE_MOD;     // existing Discord Moderator role now represents Staff
+            case HELPER:    return ROLE_MB;
             // OPERATOR / VIP / DEFAULT -> no managed role id provided here
             default:    return null;
         }
@@ -2012,12 +2013,12 @@ public class DiscordBridge extends ListenerAdapter
             if (group == null) return LoginService.Rank.DEFAULT;
 
             switch (group.toLowerCase(java.util.Locale.ENGLISH)) {
-                case "operator":      return LoginService.Rank.OPERATOR;
-                case "administrator": return LoginService.Rank.ADMIN;
-                case "staff":         return LoginService.Rank.STAFF;
-                case "masterbuilder": return LoginService.Rank.MB;
-                case "vip":           return LoginService.Rank.VIP;
-                default:              return LoginService.Rank.DEFAULT;
+                case "owner":     return LoginService.Rank.OWNER;
+                case "admin":     return LoginService.Rank.ADMIN;
+                case "moderator": return LoginService.Rank.MODERATOR;
+                case "helper":    return LoginService.Rank.HELPER;
+                case "developer": return LoginService.Rank.DEVELOPER;
+                default:          return LoginService.Rank.DEFAULT;
             }
         } catch (Throwable ignored) {
             return LoginService.Rank.DEFAULT;

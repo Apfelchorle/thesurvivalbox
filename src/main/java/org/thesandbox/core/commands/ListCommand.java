@@ -18,15 +18,16 @@ public class ListCommand implements ISubCommand
     private final TheSandboxCore core;
     private final LoginService login;
 
-    // Staff vs Player buckets as defined in your LoginService.Rank
+    // Staff vs Player buckets matching current LuckPerms groups:
+    // owner, admin, developer, helper, moderator, default
     private static final EnumSet<LoginService.Rank> STAFF_RANKS = EnumSet.of(
-            LoginService.Rank.OPERATOR,
+            LoginService.Rank.OWNER,
             LoginService.Rank.ADMIN,
-            LoginService.Rank.STAFF
+            LoginService.Rank.MODERATOR,
+            LoginService.Rank.HELPER,
+            LoginService.Rank.DEVELOPER
     );
     private static final EnumSet<LoginService.Rank> PLAYER_RANKS = EnumSet.of(
-            LoginService.Rank.MB,
-            LoginService.Rank.VIP,
             LoginService.Rank.DEFAULT
     );
 
@@ -58,7 +59,7 @@ public class ListCommand implements ISubCommand
 
             if (STAFF_RANKS.contains(rank)) {
                 staffLines.add(entry);
-            } else { // MB / DEFAULT (and any future non-staff rank)
+            } else { // DEFAULT (and any future non-staff rank)
                 playerLines.add(entry);
             }
         }
@@ -68,7 +69,7 @@ public class ListCommand implements ISubCommand
         // Header
         send(sender, CommandMessages.command("&7&m--------------------&r &dOnline (" + totalShown + ") &7&m--------------------"));
 
-        // Staff section (Operator, Admin, Staff)
+        // Staff section (Owner, Admin, Moderator, Helper, Developer)
         send(sender, CommandMessages.command("&dStaff&r &7- &d" + staffLines.size()));
         if (staffLines.isEmpty()) {
             send(sender, CommandMessages.command("&7- &7No staff online."));
@@ -76,7 +77,7 @@ public class ListCommand implements ISubCommand
             send(sender, CommandMessages.command("&8- " + String.join(color("&7, "), staffLines)));
         }
 
-        // Players section (Master Builder, VIP, Player)
+        // Players section (Default)
         send(sender, CommandMessages.command("&dPlayers &8- &d" + playerLines.size()));
         if (playerLines.isEmpty()) {
             send(sender, CommandMessages.command("&7- &7No players online."));
@@ -120,16 +121,13 @@ public class ListCommand implements ISubCommand
         String vanished = showVanishedTag ? color(" &e(VANISHED)") : "";
         String name = p.getName();
 
-        // Match the same rank prefix style used for LuckPerms/chat and scoreboard teams.
-        // Operator is intentionally displayed as OP here.
         return switch (rank == null ? LoginService.Rank.DEFAULT : rank) {
-            case OPERATOR -> color("&4&lOP &8• &4" + name) + ChatColor.RESET + vanished;
-            case ADMIN    -> color("&c&lADMIN &8• &c" + name) + ChatColor.RESET + vanished;
+            case OWNER     -> color("&4&lOWNER &8• &4" + name) + ChatColor.RESET + vanished;
+            case ADMIN     -> color("&c&lADMIN &8• &c" + name) + ChatColor.RESET + vanished;
             case DEVELOPER -> color("&5&lDEV &8• &5" + name) + ChatColor.RESET + vanished;
-            case STAFF    -> color("&6&lSTAFF &8• &6" + name) + ChatColor.RESET + vanished;
-            case MB       -> color("&3&lMB &8• &3" + name) + ChatColor.RESET + vanished;
-            case VIP      -> color("&5&lVIP &8• &5" + name) + ChatColor.RESET + vanished;
-            case DEFAULT  -> color("&7" + name) + ChatColor.RESET + vanished;
+            case MODERATOR -> color("&6&lMOD &8• &6" + name) + ChatColor.RESET + vanished;
+            case HELPER    -> color("&b&lHELPER &8• &b" + name) + ChatColor.RESET + vanished;
+            case DEFAULT   -> color("&7" + name) + ChatColor.RESET + vanished;
         };
     }
 }

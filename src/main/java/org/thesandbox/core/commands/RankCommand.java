@@ -25,7 +25,7 @@ public class RankCommand implements ISubCommand {
 
     // All LP rank groups you use (lowercase)
     private static final Set<String> RANK_GROUPS = new HashSet<>(Arrays.asList(
-            "operator", "administrator", "staff", "masterbuilder", "vip", "default"
+            "owner", "admin", "moderator", "helper", "developer", "default"
     ));
 
     private static final Map<String, LoginService.Rank> NAME_TO_RANK = new HashMap<>();
@@ -41,24 +41,24 @@ public class RankCommand implements ISubCommand {
         }
 
         // Current public rank names / aliases
-        NAME_TO_RANK.put("operator", LoginService.Rank.OPERATOR);
-        NAME_TO_RANK.put("op", LoginService.Rank.OPERATOR);
-        NAME_TO_RANK.put("administrator", LoginService.Rank.ADMIN);
+        NAME_TO_RANK.put("owner", LoginService.Rank.OWNER);
+        NAME_TO_RANK.put("op", LoginService.Rank.OWNER);
         NAME_TO_RANK.put("admin", LoginService.Rank.ADMIN);
-        NAME_TO_RANK.put("staff", LoginService.Rank.STAFF);
-        NAME_TO_RANK.put("masterbuilder", LoginService.Rank.MB);
-        NAME_TO_RANK.put("master builder", LoginService.Rank.MB);
-        NAME_TO_RANK.put("mb", LoginService.Rank.MB);
-        NAME_TO_RANK.put("vip", LoginService.Rank.VIP);
+        NAME_TO_RANK.put("administrator", LoginService.Rank.ADMIN);
+        NAME_TO_RANK.put("moderator", LoginService.Rank.MODERATOR);
+        NAME_TO_RANK.put("mod", LoginService.Rank.MODERATOR);
+        NAME_TO_RANK.put("helper", LoginService.Rank.HELPER);
+        NAME_TO_RANK.put("developer", LoginService.Rank.DEVELOPER);
+        NAME_TO_RANK.put("dev", LoginService.Rank.DEVELOPER);
         NAME_TO_RANK.put("default", LoginService.Rank.DEFAULT);
         NAME_TO_RANK.put("player", LoginService.Rank.DEFAULT);
 
         // Order for tab completion (filtered per permissions)
-        RANK_KEYS_ORDERED.add("operator");
-        RANK_KEYS_ORDERED.add("administrator");
-        RANK_KEYS_ORDERED.add("staff");
-        RANK_KEYS_ORDERED.add("masterbuilder");
-        RANK_KEYS_ORDERED.add("vip");
+        RANK_KEYS_ORDERED.add("owner");
+        RANK_KEYS_ORDERED.add("admin");
+        RANK_KEYS_ORDERED.add("moderator");
+        RANK_KEYS_ORDERED.add("helper");
+        RANK_KEYS_ORDERED.add("developer");
         RANK_KEYS_ORDERED.add("default");
     }
 
@@ -242,7 +242,7 @@ public class RankCommand implements ISubCommand {
 
     /* =================== Permissions Rules =================== */
     private boolean canUseSet(CommandSender s) {
-        // sandbox.admin can manage normal ranks only. Operator requires sandbox.superuser.
+        // sandbox.admin can manage normal ranks only. Owner requires sandbox.superuser.
         return s.hasPermission("sandbox.admin") || s.hasPermission("sandbox.superuser");
     }
 
@@ -253,16 +253,16 @@ public class RankCommand implements ISubCommand {
         EnumSet<LoginService.Rank> allowed = EnumSet.noneOf(LoginService.Rank.class);
 
         if (isAdmin) {
-            // Admins cannot set Operator. They can only set: ADMINISTRATOR, STAFF, MASTER BUILDER, VIP, DEFAULT.
+            // Admins cannot set Owner. They can only set: Admin, Moderator, Helper, Developer, Default.
             allowed.add(LoginService.Rank.ADMIN);
-            allowed.add(LoginService.Rank.STAFF);
-            allowed.add(LoginService.Rank.MB);
-            allowed.add(LoginService.Rank.VIP);
+            allowed.add(LoginService.Rank.MODERATOR);
+            allowed.add(LoginService.Rank.HELPER);
+            allowed.add(LoginService.Rank.DEVELOPER);
             allowed.add(LoginService.Rank.DEFAULT);
         }
         if (isSuper) {
-            // Superuser can set Operator.
-            allowed.add(LoginService.Rank.OPERATOR);
+            // Superuser can set Owner.
+            allowed.add(LoginService.Rank.OWNER);
         }
         return allowed;
     }
@@ -349,25 +349,25 @@ public class RankCommand implements ISubCommand {
     private LoginService.Rank rankFromGroup(String groupId) {
         if (groupId == null) return LoginService.Rank.DEFAULT;
         switch (groupId.toLowerCase(Locale.ENGLISH)) {
-            case "operator":      return LoginService.Rank.OPERATOR;
-            case "administrator": return LoginService.Rank.ADMIN;
-            case "staff":         return LoginService.Rank.STAFF;
-            case "masterbuilder": return LoginService.Rank.MB;
-            case "vip":           return LoginService.Rank.VIP;
+            case "owner":     return LoginService.Rank.OWNER;
+            case "admin":     return LoginService.Rank.ADMIN;
+            case "moderator": return LoginService.Rank.MODERATOR;
+            case "helper":    return LoginService.Rank.HELPER;
+            case "developer": return LoginService.Rank.DEVELOPER;
             case "default":
-            default:              return LoginService.Rank.DEFAULT;
+            default:          return LoginService.Rank.DEFAULT;
         }
     }
 
     private String groupIdFor(LoginService.Rank r) {
         switch (r) {
-            case OPERATOR: return "operator";
-            case ADMIN:    return "administrator";
-            case STAFF:    return "staff";
-            case MB:       return "masterbuilder";
-            case VIP:      return "vip";
+            case OWNER:     return "owner";
+            case ADMIN:     return "admin";
+            case MODERATOR: return "moderator";
+            case HELPER:    return "helper";
+            case DEVELOPER: return "developer";
             case DEFAULT:
-            default:       return "default";
+            default:        return "default";
         }
     }
 }

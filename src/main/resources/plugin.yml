@@ -4,7 +4,7 @@ version: "1.0.0"
 api-version: "1.21"
 authors: ["pixelpaladinn", "usfl"]
 description: Core features for TheSandbox
-website: "https://github.com/Apfelchorle/thesandboxcore"
+website: "https://github.com/Apfelchorle/thesurvivalbox"
 depend:
   - LuckPerms
   - Essentials

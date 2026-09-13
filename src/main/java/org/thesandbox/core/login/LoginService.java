@@ -11,28 +11,35 @@ import java.util.UUID;
 public class LoginService {
 
     // ===== Ranks =====
+    // One enum constant per LuckPerms group: owner, admin, moderator, helper, developer, default
     public enum Rank {
-        DEFAULT("Default", "&7"),
-        VIP("helper", "&5"),
-        MB("helper", "&3"),
+        OWNER("Owner", "&4", "sandbox.owner"),
+        ADMIN("Admin", "&c", "sandbox.admin"),
+        MODERATOR("Moderator", "&6", "sandbox.moderator"),
+        HELPER("Helper", "&b", "sandbox.helper"),
+        DEVELOPER("Developer", "&5", "sandbox.developer"),
+        DEFAULT("Default", "&7", "sandbox.default");
 
-        DEVELOPER("developer", "&7"),
-        STAFF("admin", "&6"),
-        ADMIN("admin", "&c"),
-        OPERATOR("owner", "&4");
-
-        /** Pretty display name (e.g., "Master Builder"). */
+        /** Pretty display name (e.g., "Moderator"). */
         public final String display;      // kept for backward compat
         public final String displayName;  // primary field used elsewhere
         /** Legacy color using '&' codes (e.g., "&c"). */
         public final String color;
+        /** LuckPerms auto-granted group permission, e.g. "group.moderator". */
+        public final String permission;
 
-        Rank(String display, String color) {
+        Rank(String display, String color, String permission) {
             this.display = display;
             this.displayName = display;
             this.color = color;
+            this.permission = permission;
         }
     }
+
+    /** Highest → lowest, used for rank resolution priority. */
+    private static final Rank[] PRIORITY_ORDER = {
+            Rank.OWNER, Rank.ADMIN, Rank.MODERATOR, Rank.HELPER, Rank.DEVELOPER, Rank.DEFAULT
+    };
 
     private final JavaPlugin plugin;
 
@@ -52,14 +59,13 @@ public class LoginService {
 
     // ===== Rank resolution & convenience =====
 
-    /** Highest → lowest permissions check. */
+    /** Highest → lowest permissions check, based on LuckPerms group.<name> permissions. */
     public Rank getRank(Player p) {
         if (p == null) return Rank.DEFAULT;
-        if (p.hasPermission("sandbox.operator")) return Rank.OPERATOR;
-        if (p.hasPermission("sandbox.admin"))    return Rank.ADMIN;
-        if (p.hasPermission("sandbox.staff"))    return Rank.STAFF;
-        if (p.hasPermission("sandbox.mb"))       return Rank.MB;
-        if (p.hasPermission("sandbox.vip"))      return Rank.VIP;
+        for (Rank rank : PRIORITY_ORDER) {
+            if (rank == Rank.DEFAULT) continue; // fallback, not a permission check
+            if (p.hasPermission(rank.permission)) return rank;
+        }
         return Rank.DEFAULT;
     }
 

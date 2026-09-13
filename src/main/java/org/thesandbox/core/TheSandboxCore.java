@@ -81,14 +81,15 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
     }
 
     private CmdTier getCmdTier(Player p) {
-        if (p == null) return CmdTier.DEFAULT;
-        if (p.hasPermission("sandbox.superuser")) return CmdTier.SUPERUSER;
-        if (p.hasPermission("sandbox.admin"))   return CmdTier.SRADMIN;
-        if (p.hasPermission("sandbox.staff"))     return CmdTier.ADMIN;
-        if (p.hasPermission("sandbox.staff"))       return CmdTier.MOD;
-        return CmdTier.DEFAULT;
+        if (p == null || loginService == null) return CmdTier.DEFAULT;
+        return switch (loginService.getRank(p)) {
+            case OWNER               -> CmdTier.SUPERUSER;
+            case ADMIN                -> CmdTier.SRADMIN;
+            case MODERATOR             -> CmdTier.ADMIN;
+            case HELPER, DEVELOPER    -> CmdTier.MOD;
+            case DEFAULT               -> CmdTier.DEFAULT;
+        };
     }
-
     // Getter so commands (e.g., ReportCommand) can access the Discord bridge
     public DiscordBridge getDiscord() { return this.discord; }
 
@@ -753,12 +754,12 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
     /** Creates the rank teams used for overhead player prefixes. */
     private void setupRankScoreboardTeams() {
         Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
-        ensureRankTeam(board, "00_operator", "&4&lOP &8• ", ChatColor.DARK_RED);
-        ensureRankTeam(board, "10_admin", "&c&lADMIN &8• ", ChatColor.RED);
-        ensureRankTeam(board, "20_staff", "&6&lSTAFF &8• ", ChatColor.GOLD);
-        ensureRankTeam(board, "30_mb", "&3&lMB &8• ", ChatColor.DARK_AQUA);
-        ensureRankTeam(board, "40_vip", "&5&lVIP &8• ", ChatColor.DARK_PURPLE);
-        ensureRankTeam(board, "99_default", "", ChatColor.GRAY);
+        ensureRankTeam(board, "00_owner",     "&4&lOWNER &8• ",  ChatColor.DARK_RED);
+        ensureRankTeam(board, "10_admin",     "&c&lADMIN &8• ",  ChatColor.RED);
+        ensureRankTeam(board, "20_moderator", "&6&lMOD &8• ",    ChatColor.GOLD);
+        ensureRankTeam(board, "30_helper",    "&b&lHELPER &8• ", ChatColor.AQUA);
+        ensureRankTeam(board, "40_developer", "&5&lDEV &8• ",    ChatColor.DARK_PURPLE);
+        ensureRankTeam(board, "99_default",   "",                ChatColor.GRAY);
     }
 
     private Team ensureRankTeam(Scoreboard board, String name, String prefix, ChatColor nameColor) {
@@ -804,7 +805,7 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
 
         String entry = player.getName();
         String[] rankTeamNames = {
-                "00_operator", "10_admin", "20_staff", "30_mb", "40_vip", "99_default"
+                "00_owner", "10_admin", "20_moderator", "30_helper", "40_developer", "99_default"
         };
         for (String teamName : rankTeamNames) {
             Team team = board.getTeam(teamName);
@@ -825,15 +826,14 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
 
     private String rankScoreboardTeamName(LoginService.Rank rank) {
         if (rank == null) return "99_default";
-        switch (rank) {
-            case OPERATOR: return "00_operator";
-            case ADMIN:    return "10_admin";
-            case STAFF:    return "20_staff";
-            case MB:       return "30_mb";
-            case VIP:      return "40_vip";
-            case DEFAULT:
-            default:       return "99_default";
-        }
+        return switch (rank) {
+            case OWNER     -> "00_owner";
+            case ADMIN     -> "10_admin";
+            case MODERATOR -> "20_moderator";
+            case HELPER    -> "30_helper";
+            case DEVELOPER -> "40_developer";
+            case DEFAULT   -> "99_default";
+        };
     }
 
     /** Build the exact join message used for normal joins and PremiumVanish unvanish. */
