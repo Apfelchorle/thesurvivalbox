@@ -62,7 +62,7 @@ public class ChatMentionFormatListener implements Listener
 
         // ----- Color handling with &k restriction -----
         String sanitized = original;
-        if (!sender.hasPermission("sandbox.staff")) {
+        if (!sender.hasPermission("sandbox.moderator")) {
             sanitized = sanitized.replaceAll("(?i)&k", "");
         }
 
@@ -72,7 +72,7 @@ public class ChatMentionFormatListener implements Listener
             colored = sanitized;
         } else {
             colored = HexColorUtil.translate(sanitized);
-            if (!sender.hasPermission("sandbox.staff")) {
+            if (!sender.hasPermission("sandbox.moderator")) {
                 colored = colored.replaceAll("(?i)\u00A7k", "");
             }
         }
@@ -87,7 +87,7 @@ public class ChatMentionFormatListener implements Listener
             discord.sendPublicMessageFromMinecraft(sender, original);
         }
 
-        final boolean staffEveryone = sender.hasPermission("sandbox.staff")
+        final boolean staffEveryone = sender.hasPermission("sandbox.moderator")
                 && EVERYONE_PATTERN.matcher(original).find();
 
         // Display name with LuckPerms prefix + Essentials nickname (if any), with spacing fixes
@@ -186,6 +186,7 @@ public class ChatMentionFormatListener implements Listener
     private String getDisplayWithPrefix(Player p)
     {
         String base = getEssentialsDisplayName(p);
+        core.getLogger().info("[ChatDebug] base=" + base);
 
         if (base == null || base.isEmpty()) {
             base = p.getName();
@@ -201,8 +202,12 @@ public class ChatMentionFormatListener implements Listener
 
         String guildPrefix = getGuildPrefixColorized(p);
         String lpPrefix = getLuckPermsPrefixColorized(p);
+        core.getLogger().info("[ChatDebug] guildPrefix=" + guildPrefix + " lpPrefix=" + lpPrefix);
+
+
 
         String prefix = joinPrefixes(guildPrefix, lpPrefix);
+        core.getLogger().info("[ChatDebug] final prefix=" + prefix + " base=" + base);
 
         if (prefix == null || prefix.isEmpty()) {
             return base;

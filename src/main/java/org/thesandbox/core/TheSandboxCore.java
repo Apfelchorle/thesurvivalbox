@@ -33,6 +33,7 @@ import java.util.*;
 // POTIONSPY: service import
 
 
+@SuppressWarnings("Annotator")
 public class TheSandboxCore extends JavaPlugin implements Listener {
 
     public enum Source { MINECRAFT, DISCORD }
