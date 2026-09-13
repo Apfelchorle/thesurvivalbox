@@ -10,10 +10,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
-import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -21,10 +18,12 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
+import org.thesandbox.core.commands.CommandManager;
 import org.thesandbox.core.fun.LoginMessages;
 import org.thesandbox.core.fun.items.itemUTILS.Item;
 import org.thesandbox.core.fun.items.itemUTILS.ItemKeys;
-import org.thesandbox.core.commands.CommandManager;
 import org.thesandbox.core.guilds.GuildManager;
 import org.thesandbox.core.login.LoginService;
 import org.thesandbox.core.tags.TagService;
@@ -422,9 +421,7 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         }
 
         // Global block for everyone except moderator+
-        if (cmdBlockAll) return true;
-
-        return false;
+        return cmdBlockAll;
     }
 
     /* =================== DB ==================== */
@@ -642,9 +639,7 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Player p = event.getPlayer();
         Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
 
-        if (!vanish_status) {
-            event.setJoinMessage(buildJoinMessageFor(p));
-        } else {
+        if (vanish_status) {
             event.setJoinMessage(null);
         }
     }
@@ -654,9 +649,7 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Player p = event.getPlayer();
         Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
 
-        if (!vanish_status) {
-            event.setQuitMessage(buildLeaveMessageFor(p));
-        } else {
+        if (vanish_status) {
             event.setQuitMessage(null);
         }
     }
@@ -667,8 +660,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTask(this, () -> {
             // SAVE FOR PLAYER
             dataListener.set(p.getUniqueId(), PlayerDataKeys.VANISHED, true);
-            // Fake leave for everyone
-            Bukkit.broadcastMessage(buildLeaveMessageFor(p));
             // Staff-only notice
             String staffMsg = ChatColor.translateAlternateColorCodes(
                     '&', "&8[&b&lSTAFF&8] &c" + p.getName() + " vanished.");
@@ -686,9 +677,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTask(this, () -> {
             // SAVE FOR PLAYER
             dataListener.set(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
-            // Fake join (same formatting as normal joins)
-            Bukkit.broadcastMessage(buildJoinMessageFor(p));
-            LoginMessagesFakeLogin(p);
 
             // Staff-only notice
 

@@ -1,4 +1,4 @@
-# THESANDBOXCORE PLUGIN
+# thesurvivalbox PLUGIN
 **Notice: For new plugin updates, use /update to automatically pull from Apfelchorle/thesandboxcore
 (configurable in the config file)**
 # PLANS :

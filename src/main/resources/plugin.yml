@@ -23,12 +23,6 @@ commands:
     description: Force dismount from an Entity.
     usage: /dismount
 
-  opall:
-    description: Op Everyone
-    usage: /opall
-    permission: sandbox.default
-    aliases: [freeop]
-
   discord:
     description: Sends Discord Invite
     usage: /discord
@@ -41,10 +35,6 @@ commands:
     aliases: [jp]
   coins:
     description: Displays Your Balance
-    permission: sandbox.default
-  shop:
-    description: Opens The Shop
-    usage: /shop
     permission: sandbox.default
   skull:
     description: Give yourself a player skull
@@ -195,13 +185,8 @@ commands:
   debugstick:
     description: Obtain a Debug Stick
     usage: /debugstick
-    permission: sandbox.default
+    permission: sandbox.superuser
     aliases: [deb]
-
-  loginmessage:
-    description: Set Your Login Message!
-    permission: sandbox.default
-    alias: [lmsg]
 
   update:
     description: Update TheSandBoxCore Plugin
@@ -364,12 +349,6 @@ commands:
     description: Marriage.
     permission: sandbox.default
     aliases: [marriage,]
-
-  masterbuilderworld:
-    description: Teleport to the masterbuilderworld.
-    usage: /masterbuilderworld
-    aliases: [mbw]
-    permission: sandbox.default
 
   gamemode:
     description: Change your or another player's gamemode
