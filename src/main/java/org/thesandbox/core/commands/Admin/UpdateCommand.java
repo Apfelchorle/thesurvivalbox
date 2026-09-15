@@ -44,6 +44,12 @@ public class UpdateCommand implements ISubCommand {
             return true;
         }
 
+        if (true) {
+            sender.sendMessage(Component.text("THIS COMMAND IS DEPRECATED USE /UPDATELOCAL", NamedTextColor.DARK_RED));
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "/updatelocal");
+            return true;
+        }
+
         String token = plugin.getConfig().getString("update.github-token", "");
         String repo = plugin.getConfig().getString("update.repo", "");
 
