@@ -1,6 +1,5 @@
 package org.thesandbox.core.util;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.command.*;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -24,19 +23,17 @@ import java.util.logging.Logger;
 
 public final class CommandAutoRegistrar {
     // Delegates Bukkit tab completion to ISubCommand#tabComplete for classes that don't implement TabCompleter.
-    private static final class DelegatingTabCompleter implements TabCompleter {
-        private final ISubCommand sub;
-        DelegatingTabCompleter(ISubCommand sub) { this.sub = sub; }
+        private record DelegatingTabCompleter(ISubCommand sub) implements TabCompleter {
         @Override
-        public java.util.List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-            try {
-                java.util.List<String> out = sub.tabComplete(sender, command, alias, args);
-                return (out != null) ? out : java.util.Collections.emptyList();
-            } catch (Throwable t) {
-                return java.util.Collections.emptyList();
+            public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+                try {
+                    List<String> out = sub.tabComplete(sender, command, alias, args);
+                    return (out != null) ? out : Collections.emptyList();
+                } catch (Throwable t) {
+                    return Collections.emptyList();
+                }
             }
         }
-    }
 
 
     private static final String COMMANDS_PKG = "org.thesandbox.core.commands";
@@ -203,7 +200,7 @@ public final class CommandAutoRegistrar {
             CodeSource src = plugin.getClass().getProtectionDomain().getCodeSource();
             if (src == null) return list;
             URL jarUrl = src.getLocation();
-            String path = URLDecoder.decode(jarUrl.getPath(), StandardCharsets.UTF_8.name());
+            String path = URLDecoder.decode(jarUrl.getPath(), StandardCharsets.UTF_8);
 
             try (JarInputStream jis = new JarInputStream(new URL("file", null, path).openStream())) {
                 JarEntry e;
@@ -254,12 +251,24 @@ public final class CommandAutoRegistrar {
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
         Arrays.sort(ctors, Comparator.comparingInt((Constructor<?> c) -> c.getParameterCount()).reversed());
         for (Constructor<?> c : ctors) {
+            Class<?>[] paramTypes = c.getParameterTypes();
             try {
                 Object[] args = buildArgsFor(c.getParameterTypes(), injector);
-                if (args == null) continue;
+                if (args == null) {
+                    for (Class<?> pt : paramTypes) {
+                        if (findAssignable(injector, pt) == null) {
+                            plugin.getLogger().warning("[CommandAutoRegistrar] " + clazz.getSimpleName()
+                                    + " ctor needs " + pt.getName() + " but no matching service was found in the injector.");
+                        }
+                    }
+                    continue;
+                }
                 c.setAccessible(true);
                 return c.newInstance(args);
-            } catch (ReflectiveOperationException ignored) { }
+            } catch (ReflectiveOperationException e) {
+                plugin.getLogger().warning("[CommandAutoRegistrar] " + clazz.getSimpleName()
+                        + " ctor threw during construction: " + (e.getCause() != null ? e.getCause() : e));
+            }
         }
         try {
             Constructor<?> noArg = clazz.getDeclaredConstructor();
@@ -288,7 +297,7 @@ public final class CommandAutoRegistrar {
             Class<?> haveType = e.getKey();
             Object val = e.getValue();
             if (want.isAssignableFrom(haveType)) return val;
-            if (val != null && want.isInstance(val)) return val;
+            if (want.isInstance(val)) return val;
         }
         return null;
     }

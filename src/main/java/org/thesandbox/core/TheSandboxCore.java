@@ -20,6 +20,8 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
+import org.thesandbox.core.commands.Admin.UpdateAllProxiesCommand;
+import org.thesandbox.core.commands.Admin.UpdateLocalCommand;
 import org.thesandbox.core.commands.CommandManager;
 import org.thesandbox.core.fun.LoginMessages;
 import org.thesandbox.core.fun.items.itemUTILS.Item;
@@ -42,6 +44,9 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
 
     private DataManager dataManager;
     private PlayerDataListener dataListener;
+
+    private UpdateLocalCommand updateLocalCommand;
+    private UpdateAllProxiesCommand updateAllProxiesCommand;
 
     private LoginMessages loginMessages;
 
@@ -123,6 +128,7 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         saveDefaultConfig();
         setupDatabase();
 
+
         PluginConfigManager configManager = new PluginConfigManager(this);
 
         this.dataManager = new DataManager(this);
@@ -177,6 +183,11 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         this.liteBansWarningListener = new LiteBansWarningListener(this);
         this.liteBansWarningListener.register();
 
+
+        // updater
+
+        this.updateLocalCommand = new UpdateLocalCommand(this, discord);
+
         // registered items
 
 
@@ -194,7 +205,8 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
                 dataListener,
                 itemKeys,
                 loginMessages,
-                configManager
+                configManager,
+                updateLocalCommand
         ));
 
         // Command Auto Registrar + ItemAutoRegistrar
