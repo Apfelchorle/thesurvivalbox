@@ -1,54 +1,44 @@
 package org.thesandbox.core;
 
+import de.myzelyam.api.vanish.PlayerHideEvent;
+import de.myzelyam.api.vanish.PlayerShowEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.MessageHistory;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent; // <-- NEW
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
-import net.dv8tion.jda.api.entities.emoji.Emoji;
-import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
-
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.md_5.bungee.api.chat.*;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.Plugin;
-import org.thesandbox.core.login.LoginService;
-
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-
 import org.bukkit.entity.Player;
-import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-
-import de.myzelyam.api.vanish.PlayerHideEvent;
-import de.myzelyam.api.vanish.PlayerShowEvent;
-
+import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
+import org.thesandbox.core.discord.model.ReportRecord;
+import org.thesandbox.core.login.LoginService;
+import org.thesandbox.core.util.PlayerDataKeys;
+import org.thesandbox.core.util.PlayerDataListener;
 
 import java.awt.Color;
 import java.io.File;
@@ -59,30 +49,17 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Deque;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-
-import org.thesandbox.core.discord.model.ReportRecord;
-import org.thesandbox.core.util.PlayerDataKeys;
-import org.thesandbox.core.util.PlayerDataListener;
+import java.util.regex.Pattern;
 
 public class DiscordBridge extends ListenerAdapter
 {
     private final TheSandboxCore plugin;
     private JDA jda;
-    private PlayerDataListener playerDataListener;
+    private final PlayerDataListener playerDataListener;
 
     // Channels
     private TextChannel staffChannel;
@@ -799,7 +776,6 @@ public class DiscordBridge extends ListenerAdapter
 
         if (cmd.equals("devtoggle")) {
             handleDevToggle(event);
-            return;
         }
     }
 
@@ -906,23 +882,20 @@ public class DiscordBridge extends ListenerAdapter
     }
 
     // ===== Used by older moderation commands (kept for now but unused) =====
-    private static class ParseResult {
-        final boolean ok;
-        final boolean permanent;
-        final String durationToken;
-        final String error;
+        private record ParseResult(boolean ok, boolean permanent, String durationToken, String error) {
 
-        private ParseResult(boolean ok, boolean permanent, String durationToken, String error) {
-            this.ok = ok;
-            this.permanent = permanent;
-            this.durationToken = durationToken;
-            this.error = error;
+        static ParseResult okPerm() {
+            return new ParseResult(true, true, null, null);
         }
 
-        static ParseResult okPerm()            { return new ParseResult(true,  true,  null, null); }
-        static ParseResult okWith(String tok)  { return new ParseResult(true,  false, tok,  null); }
-        static ParseResult fail(String msg)    { return new ParseResult(false, false, null,  msg); }
-    }
+        static ParseResult okWith(String tok) {
+            return new ParseResult(true, false, tok, null);
+        }
+
+        static ParseResult fail(String msg) {
+            return new ParseResult(false, false, null, msg);
+        }
+        }
 
     /** Accepts Ns/Nm/Nd (max 1d). Senior Admin may use "0" for permanent. */
     private ParseResult parseDuration(String raw, boolean isSrAdmin) {
@@ -1757,13 +1730,13 @@ public class DiscordBridge extends ListenerAdapter
         @EventHandler
         public void onHide(PlayerHideEvent e) {
             sendPlayerQuitEmbed(e.getPlayer());
-            sendVanishEmbed(e.getPlayer(), "has **vanished**");
+            sendVanishEmbed(e.getPlayer(), "has vanished");
         }
 
         @EventHandler
         public void onShow(PlayerShowEvent e) {
             sendPlayerJoinEmbed(e.getPlayer());
-            sendVanishEmbed(e.getPlayer(), "has **unvanished**");
+            sendVanishEmbed(e.getPlayer(), "has unvanished");
         }
     }
 
@@ -1895,7 +1868,7 @@ public class DiscordBridge extends ListenerAdapter
         java.util.ArrayList<BaseComponent> list = new java.util.ArrayList<>();
         for (BaseComponent[] a : arrays) {
             if (a != null) {
-                for (BaseComponent b : a) list.add(b);
+                Collections.addAll(list, a);
             }
         }
         return list.toArray(new BaseComponent[0]);
