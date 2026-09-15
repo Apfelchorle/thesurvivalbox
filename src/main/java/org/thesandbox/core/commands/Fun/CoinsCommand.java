@@ -30,8 +30,7 @@ public class CoinsCommand implements ISubCommand {
         }
 
         if (input.equalsIgnoreCase("@p")) {
-            if (!(sender instanceof Player)) return null; // console has no location to measure "nearest" from
-            Player senderPlayer = (Player) sender;
+            if (!(sender instanceof Player senderPlayer)) return null; // console has no location to measure "nearest" from
             return senderPlayer.getWorld().getPlayers().stream()
                     .filter(p -> !p.equals(senderPlayer))
                     .min(Comparator.comparingDouble(p -> p.getLocation().distanceSquared(senderPlayer.getLocation())))
@@ -122,7 +121,7 @@ public class CoinsCommand implements ISubCommand {
                 sender.sendMessage(Component.text("[Error]: " + args[2] + " is not a number.", NamedTextColor.RED));
                 return true;
             }
-            if (targetPlayer == null) {
+            if (!targetPlayer.isOnline()) {
                 sender.sendMessage(Component.text(target + " is offline!", NamedTextColor.DARK_GRAY));
                 return true;
             }

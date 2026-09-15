@@ -49,7 +49,7 @@ public class LoginMessagesItem implements Item {
 
         meta.displayName(Component.text(NAME, NamedTextColor.WHITE)
                 .decoration(TextDecoration.ITALIC, false));
-        meta.lore(java.util.List.of(Component.text("Get Your Very Own Personalized Login Message!", NamedTextColor.DARK_GRAY, TextDecoration.BOLD)));
+        meta.lore(java.util.List.of(Component.text("Get your very own personalized login message!", NamedTextColor.DARK_GRAY, TextDecoration.BOLD)));
         meta.getPersistentDataContainer().set(keys.loginMessages, PersistentDataType.BYTE, (byte) 1);
         meta.setEnchantmentGlintOverride(true);
         item.setItemMeta(meta);

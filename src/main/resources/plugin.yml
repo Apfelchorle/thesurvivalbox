@@ -19,6 +19,11 @@ softdepend:
 loadbefore: [Essentials, EssentialsX, WorldGuard]
 
 commands:
+  updateallproxies:
+    permission: sandbox.superuser
+
+  updatelocal:
+    permission: sandbox.superuser
   dismount:
     description: Force dismount from an Entity.
     usage: /dismount

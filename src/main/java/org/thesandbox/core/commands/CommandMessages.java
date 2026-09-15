@@ -1,34 +1,34 @@
 package org.thesandbox.core.commands;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
-final class CommandMessages
+public final class CommandMessages
 {
-    private CommandMessages()
+    public CommandMessages()
     {
     }
 
-    static String command(String message)
+    public static String command(String message)
     {
         return apply("&7&lCommand &8» &7", message, false);
     }
 
-    static String error(String message)
+    public static String error(String message)
     {
         return apply("&c&lError &8» &c", message, false);
     }
 
-    static String usage(String message)
+    public static String usage(String message)
     {
         return apply("&c&lUsage &8» &c", message, true);
     }
 
-    static String server(String message)
+    public static String server(String message)
     {
         return apply("&c&lServer &8» &c", message, false);
     }
 
-    private static String apply(String prefix, String message, boolean usage)
+    public static String apply(String prefix, String message, boolean usage)
     {
         String body = message == null ? "" : stripLeadingColor(message);
         if (usage)
@@ -42,10 +42,14 @@ final class CommandMessages
                 body = body.substring(6).stripLeading();
             }
         }
-        return ChatColor.translateAlternateColorCodes('&', prefix) + body;
+        String coloredPrefix = LegacyComponentSerializer.legacyAmpersand().serialize(
+                LegacyComponentSerializer.legacyAmpersand().deserialize(prefix)
+        );
+
+        return coloredPrefix + body;
     }
 
-    private static String stripLeadingColor(String input)
+    public static String stripLeadingColor(String input)
     {
         String value = input;
         boolean changed = true;
@@ -108,7 +112,11 @@ final class CommandMessages
         return value;
     }
 
-    private static boolean isHex(char c)
+    /// checks if given value is hex
+    ///
+    /// @return Boolean
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public static boolean isHex(char c)
     {
         c = Character.toLowerCase(c);
         return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
