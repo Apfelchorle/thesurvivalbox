@@ -16,7 +16,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
@@ -645,26 +644,26 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTaskLater(this, () -> applyRankScoreboardTeam(event.getPlayer()), 20L);
     }
 
-    // Login message logic (uses shared helper)
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        Player p = event.getPlayer();
-        Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
-
-        if (vanish_status) {
-            event.setJoinMessage(null);
-        }
-    }
-
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        Player p = event.getPlayer();
-        Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
-
-        if (vanish_status) {
-            event.setQuitMessage(null);
-        }
-    }
+//    // Login message logic (uses shared helper)
+//    @EventHandler
+//    public void onPlayerJoin(PlayerJoinEvent event) {
+//        Player p = event.getPlayer();
+//        Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
+//
+//        if (vanish_status) {
+//            event.setJoinMessage(null);
+//        }
+//    }
+//
+//    @EventHandler
+//    public void onPlayerQuit(PlayerQuitEvent event) {
+//        Player p = event.getPlayer();
+//        Boolean vanish_status = dataListener.get(p.getUniqueId(), PlayerDataKeys.VANISHED, false);
+//
+//        if (vanish_status) {
+//            event.setQuitMessage(null);
+//        }
+//    }
 
     @EventHandler
     public void onVanishHide(PlayerHideEvent event) {
