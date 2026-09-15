@@ -19,6 +19,9 @@ softdepend:
 loadbefore: [Essentials, EssentialsX, WorldGuard]
 
 commands:
+  funitems:
+    permission: sandbox.staff
+
   updateallproxies:
     permission: sandbox.superuser
 

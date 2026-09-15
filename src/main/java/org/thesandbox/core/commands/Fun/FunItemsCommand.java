@@ -23,7 +23,7 @@ import org.thesandbox.core.util.PlayerDataListener;
 
 import java.util.*;
 
-public class ShopCommand implements Listener, ISubCommand {
+public class FunItemsCommand implements Listener, ISubCommand {
 
     private final LightningRodItem lightningRodItem;
     private final PlayerDataListener playerDataListener;
@@ -66,7 +66,7 @@ public class ShopCommand implements Listener, ISubCommand {
     private final Map<Integer, Item> shopSlots = new HashMap<>();
 
 
-    public ShopCommand(TheSandboxCore plugin, PlayerDataListener playerDataListener, LightningRodItem lightningRodItem, LoginMessagesItem loginMessagesItem, ClownFishItem clownFishItem, Rideable_Ender_Pearl_Item rideableEnderPearlItem, GrapplingHookItem grapplingHookItem, StackingPotatoItem stackingPotatoItem, FloatBoatItem floatBoatItem, WindRodItem windRodItem) {
+    public FunItemsCommand(TheSandboxCore plugin, PlayerDataListener playerDataListener, LightningRodItem lightningRodItem, LoginMessagesItem loginMessagesItem, ClownFishItem clownFishItem, Rideable_Ender_Pearl_Item rideableEnderPearlItem, GrapplingHookItem grapplingHookItem, StackingPotatoItem stackingPotatoItem, FloatBoatItem floatBoatItem, WindRodItem windRodItem) {
         this.playerDataListener = playerDataListener;
         this.lightningRodItem = lightningRodItem;
         this.loginMessagesItem = loginMessagesItem;
