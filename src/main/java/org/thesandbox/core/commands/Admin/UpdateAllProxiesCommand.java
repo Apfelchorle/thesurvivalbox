@@ -12,6 +12,8 @@ import org.thesandbox.core.commands.ISubCommand;
 import org.thesandbox.core.util.PterodactylBridge;
 
 import java.awt.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 
 public class UpdateAllProxiesCommand implements ISubCommand {
@@ -58,11 +60,21 @@ public class UpdateAllProxiesCommand implements ISubCommand {
                 String msg = "Failed to trigger remote proxy update: " + e.getMessage();
                 sender.sendMessage(Component.text(msg, NamedTextColor.RED));
                 discordBroadcast(msg, sender);
+                printLocalHostForDebug();
                 plugin.getLogger().severe("Remote proxy update trigger failed: " + e);
             }
         });
 
         return true;
+    }
+
+    private void printLocalHostForDebug() {
+        try {
+            InetAddress localHost = InetAddress.getLocalHost();
+            plugin.getLogger().info(localHost.getHostName() + " Localhost: " + localHost);
+        } catch (UnknownHostException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     private void discordBroadcast(String message, CommandSender sender) {
