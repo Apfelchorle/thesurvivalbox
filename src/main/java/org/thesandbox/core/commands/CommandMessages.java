@@ -1,6 +1,6 @@
 package org.thesandbox.core.commands;
 
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.ChatColor;
 
 public final class CommandMessages
 {
@@ -42,11 +42,7 @@ public final class CommandMessages
                 body = body.substring(6).stripLeading();
             }
         }
-        String coloredPrefix = LegacyComponentSerializer.legacyAmpersand().serialize(
-                LegacyComponentSerializer.legacyAmpersand().deserialize(prefix)
-        );
-
-        return coloredPrefix + body;
+        return ChatColor.translateAlternateColorCodes('&', prefix) + body;
     }
 
     public static String stripLeadingColor(String input)
@@ -112,10 +108,6 @@ public final class CommandMessages
         return value;
     }
 
-    /// checks if given value is hex
-    ///
-    /// @return Boolean
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isHex(char c)
     {
         c = Character.toLowerCase(c);
