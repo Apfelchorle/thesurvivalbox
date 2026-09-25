@@ -1,10 +1,13 @@
-package org.thesandbox.core;
+package org.thesandbox.core.listeners;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.entity.Player;
+import org.thesandbox.core.DiscordBridge;
+import org.thesandbox.core.TheSandboxCore;
+import org.thesandbox.core.fun.Utils;
 
 public class PublicChatBridgeListener implements Listener
 {
@@ -18,11 +21,11 @@ public class PublicChatBridgeListener implements Listener
 
     // IMPORTANT: ignoreCancelled = true so plugins like ChatReaction can cancel chat before it mirrors to Discord
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onChat(AsyncPlayerChatEvent event) {
+    public void onChat(AsyncChatEvent event) {
         if (bridge == null || !bridge.isReady()) return;
 
         Player p = event.getPlayer();
-        String msg = event.getMessage();
+        String msg = Utils.AdventureAPI(event.message());
 
         // Mirror to Discord (does not modify your in-game chat)
         bridge.sendPublicMessageFromMinecraft(p, msg);

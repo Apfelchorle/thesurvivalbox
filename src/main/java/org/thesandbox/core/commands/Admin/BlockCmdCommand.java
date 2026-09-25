@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.thesandbox.core.TheSandboxCore;
 import org.thesandbox.core.commands.ISubCommand;
+import org.thesandbox.core.managers.CommandBlockManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,8 @@ public class BlockCmdCommand implements ISubCommand {
 
     // 5 minutes in millis
     private static final long BLOCK_DURATION_MS = 5L * 60L * 1000L;
+
+    private CommandBlockManager commandBlockManager;
 
     public BlockCmdCommand(JavaPlugin plugin) {
         this.plugin = (TheSandboxCore) plugin;
@@ -44,12 +47,12 @@ public class BlockCmdCommand implements ISubCommand {
 
         // /blockcmd all  -> block everyone except staff
         if (sub.equals("all")) {
-            if (plugin.isCmdBlockAll()) {
+            if (plugin.getCommandBlockManager().isCmdBlockAll()) {
                 sender.sendMessage(ChatColor.translateAlternateColorCodes('&',
                 "&c&lError &8» &cCommands are currently blocked for all players."));
                 return true;
             }
-            plugin.enableCmdBlockAll();
+            plugin.getCommandBlockManager().enableCmdBlockAll();
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&',
             "&c&lServer &8» &c" + sender.getName() + " has blocked all online players' commands."));
             return true;
@@ -57,7 +60,7 @@ public class BlockCmdCommand implements ISubCommand {
 
         // /blockcmd purge -> remove everyone’s block and disable global
         if (sub.equals("purge")) {
-            plugin.purgeAllCmdBlocks();
+            plugin.getCommandBlockManager().purgeAllCmdBlocks();
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&',
             "&c&lServer &8» &c" + sender.getName() + " has unblocked all online players' commands."));
             return true;
@@ -75,19 +78,19 @@ public class BlockCmdCommand implements ISubCommand {
         }
 
         // If offline, allow block by name; the on-preprocess will resolve at runtime when they’re online.
-        boolean wasBlocked = plugin.isPlayerCmdBlockedByName(targetName);
+        boolean wasBlocked = plugin.getCommandBlockManager().isPlayerCmdBlockedByName(targetName);
 
         if (wasBlocked) {
-            plugin.unblockPlayerCommandsByName(targetName);
+            plugin.getCommandBlockManager().unblockPlayerCommandsByName(targetName);
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&',
             "&c&lServer &8» &c" + sender.getName() + " has unblocked " + target.getName() + "'s commands."));
         } else {
             // do not allow blocking staff even if they come online later and have perms
             if (target == null) {
                 // If they are offline, we can't check perms; we’ll re-check upon first command (core handler also prevents blocking mod+).
-                plugin.blockPlayerCommandsByName(targetName, System.currentTimeMillis() + BLOCK_DURATION_MS);
+                plugin.getCommandBlockManager().blockPlayerCommandsByName(targetName, System.currentTimeMillis() + BLOCK_DURATION_MS);
             } else {
-                plugin.blockPlayerCommands(target.getUniqueId(), System.currentTimeMillis() + BLOCK_DURATION_MS);
+                plugin.getCommandBlockManager().blockPlayerCommands(target.getUniqueId(), System.currentTimeMillis() + BLOCK_DURATION_MS);
             }
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&',
             "&c&lServer &8» &c" + sender.getName() + " has blocked " + target.getName() + "'s commands."));

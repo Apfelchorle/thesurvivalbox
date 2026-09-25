@@ -1,4 +1,4 @@
-package org.thesandbox.core;
+package org.thesandbox.core.services;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -24,7 +24,6 @@ public class ManageChatService {
     }
 
     public boolean toggle() {
-        muted = !muted;
-        return muted;
+        return !muted;
     }
 }

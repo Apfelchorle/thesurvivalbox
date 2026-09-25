@@ -24,6 +24,7 @@ public class DataManager {
     private File fileFor(UUID uuid) {
         return new File(playerFolder, uuid.toString() + ".yml");
     }
+
     public <T> T loadData(UUID uuid, String key, T defaultValue) {
         File file = fileFor(uuid);
         if (!file.exists()) return defaultValue;

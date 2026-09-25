@@ -14,7 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
-import org.thesandbox.core.HexColorUtil;
+import org.thesandbox.core.util.HexColorUtil;
 import org.thesandbox.core.guilds.Guild;
 import org.thesandbox.core.guilds.GuildManager;
 

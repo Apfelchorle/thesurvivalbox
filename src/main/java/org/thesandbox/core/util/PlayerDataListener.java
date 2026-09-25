@@ -8,10 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class PlayerDataListener implements Listener {
 
@@ -21,33 +18,39 @@ public class PlayerDataListener implements Listener {
         this.dataManager = dataManager;
     }
 
-    private Map<String, Object> loadFromDisk(UUID uuid) {
-        Map<String, Object> data = new HashMap<>();
+    private static final Map<String, Object> DEFAULTS = new LinkedHashMap<>();
 
+    static {
         // Coins Balance
-        data.put(PlayerDataKeys.COINS, dataManager.loadData(uuid, PlayerDataKeys.COINS, 0));
+        DEFAULTS.put(PlayerDataKeys.COINS, 0);
 
         // JumpPad State
-        data.put(PlayerDataKeys.JUMPPADS_MODE, dataManager.loadData(uuid, PlayerDataKeys.JUMPPADS_MODE, "disabled"));
+        DEFAULTS.put(PlayerDataKeys.JUMPPADS_MODE, "disabled");
 
         // item ownership
-        data.put(PlayerDataKeys.LIGHTNING_ROD, dataManager.loadData(uuid, PlayerDataKeys.LIGHTNING_ROD, "not_owned"));
-        data.put(PlayerDataKeys.LOGIN_MESSAGE, dataManager.loadData(uuid, PlayerDataKeys.LOGIN_MESSAGE, ""));
-        data.put(PlayerDataKeys.LOGIN_MESSAGES_STATE, dataManager.loadData(uuid, PlayerDataKeys.LOGIN_MESSAGES_STATE, "not_owned"));
-        data.put(PlayerDataKeys.CLOWN_FISH, dataManager.loadData(uuid, PlayerDataKeys.CLOWN_FISH, "not_owned"));
-        data.put(PlayerDataKeys.RIDEABLE_ENDER_PEARL, dataManager.loadData(uuid, PlayerDataKeys.RIDEABLE_ENDER_PEARL, "not_owned"));
-        data.put(PlayerDataKeys.GRAPPLING_HOOK, dataManager.loadData(uuid, PlayerDataKeys.GRAPPLING_HOOK, "not_owned"));
-        data.put(PlayerDataKeys.Stacking_Potato, dataManager.loadData(uuid, PlayerDataKeys.Stacking_Potato, "not_owned"));
-        data.put(PlayerDataKeys.WIND_ROD, dataManager.loadData(uuid, PlayerDataKeys.WIND_ROD, "not_owned"));
-        data.put(PlayerDataKeys.FLOAT_BOAT, dataManager.loadData(uuid, PlayerDataKeys.FLOAT_BOAT, "not_owned"));
+        DEFAULTS.put(PlayerDataKeys.LIGHTNING_ROD, "not_owned");
+        DEFAULTS.put(PlayerDataKeys.LOGIN_MESSAGE, "");
+        DEFAULTS.put(PlayerDataKeys.LOGIN_MESSAGES_STATE, "not_owned");
+        DEFAULTS.put(PlayerDataKeys.CLOWN_FISH, "not_owned");
+        DEFAULTS.put(PlayerDataKeys.RIDEABLE_ENDER_PEARL, "not_owned");
+        DEFAULTS.put(PlayerDataKeys.GRAPPLING_HOOK, "not_owned");
+        DEFAULTS.put(PlayerDataKeys.Stacking_Potato, "not_owned");
+        DEFAULTS.put(PlayerDataKeys.WIND_ROD, "not_owned");
+        DEFAULTS.put(PlayerDataKeys.FLOAT_BOAT, "not_owned");
 
         // marriage
-        data.put(PlayerDataKeys.MARRIAGE_SPOUSE, dataManager.loadData(uuid, PlayerDataKeys.MARRIAGE_SPOUSE, ""));
-        data.put(PlayerDataKeys.MARRIAGE_STATUS, dataManager.loadData(uuid, PlayerDataKeys.MARRIAGE_STATUS, "Single"));
-        data.put(PlayerDataKeys.GENDER, dataManager.loadData(uuid, PlayerDataKeys.GENDER, "male"));
+        DEFAULTS.put(PlayerDataKeys.MARRIAGE_SPOUSE, "");
+        DEFAULTS.put(PlayerDataKeys.MARRIAGE_STATUS, "Single");
+        DEFAULTS.put(PlayerDataKeys.GENDER, "male");
 
         // staff
-        data.put(PlayerDataKeys.VANISHED, dataManager.loadData(uuid, PlayerDataKeys.VANISHED, false));
+        DEFAULTS.put(PlayerDataKeys.VANISHED, false);
+        DEFAULTS.put(PlayerDataKeys.CHATFILTER, true);
+    }
+
+    private Map<String, Object> loadFromDisk(UUID uuid) {
+        Map<String, Object> data = new HashMap<>();
+        DEFAULTS.forEach((key, defaultValue) -> data.put(key, dataManager.loadData(uuid, key, defaultValue)));
         return data;
     }
 
@@ -140,21 +143,20 @@ public class PlayerDataListener implements Listener {
     }
 
     public int getCoins(UUID uuid) {
-        return get(uuid, "coins", 0);
+        return get(uuid, PlayerDataKeys.COINS, 0);
     }
 
     public void addCoins(UUID uuid, int amount) {
-        set(uuid, "coins", getCoins(uuid) + amount);
+        set(uuid, PlayerDataKeys.COINS, getCoins(uuid) + amount);
     }
 
     public void removeCoins(UUID uuid, int amount) {
-        set(uuid, "coins", getCoins(uuid) - amount);
+        set(uuid, PlayerDataKeys.COINS, getCoins(uuid) - amount);
     }
 
     public void setCoins(UUID uuid, int amount) {
-        set(uuid, "coins", amount);
+        set(uuid, PlayerDataKeys.COINS, amount);
     }
-
 
 
 }

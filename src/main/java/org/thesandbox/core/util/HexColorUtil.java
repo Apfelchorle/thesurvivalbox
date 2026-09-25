@@ -1,4 +1,4 @@
-package org.thesandbox.core;
+package org.thesandbox.core.util;
 
 import org.bukkit.ChatColor;
 

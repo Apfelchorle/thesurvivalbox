@@ -1,11 +1,15 @@
-package org.thesandbox.core;
+package org.thesandbox.core.services;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.thesandbox.core.TheSandboxCore;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
@@ -22,16 +26,51 @@ public class ShushService {
     // Cache of who is currently shushed
     private final Set<UUID> enabled = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    // In-memory originals for quick restores (also persisted)
-    private static final class Originals {
-        final boolean cmdSpyEnabled;
-        final boolean potionSpyEnabled;
-        final boolean staffChatHidden;
-        Originals(boolean cmdSpyEnabled, boolean potionSpyEnabled, boolean staffChatHidden) {
-            this.cmdSpyEnabled = cmdSpyEnabled;
-            this.potionSpyEnabled = potionSpyEnabled;
-            this.staffChatHidden = staffChatHidden;
+    /**
+     * Enable shush: capture originals, disable notifications, persist.
+     */
+    public void enable(Player p) {
+        final UUID id = p.getUniqueId();
+
+        // Capture originals
+        boolean cmdSpyEnabled = !plugin.getCommandSpyManager().isCmdSpyDisabled(id);
+        boolean __potionTmp = false;
+        try {
+            __potionTmp = (plugin.getPotionSpyService() != null) && plugin.getPotionSpyService().isEnabled(id);
+        } catch (Throwable t) {
+            // ignore
         }
+        final boolean potionSpyEnabled = __potionTmp;
+        boolean staffChatHidden = plugin.getStaffChatManager().isStaffChatHidden(id);
+
+        originals.put(id, new Originals(cmdSpyEnabled, potionSpyEnabled, staffChatHidden));
+
+        // Disable all notification channels
+        plugin.getCommandSpyManager().setCmdSpy(p, false); // disable CommandSpy
+        if (plugin.getPotionSpyService() != null) {
+            plugin.getPotionSpyService().setEnabled(id, false);
+        }
+        plugin.getStaffChatManager().setStaffChatHidden(p, true); // hide staff chat receive (also blocks speaking per plugin logic)
+
+        enabled.add(id);
+        enabledMisses.remove(id);
+
+        // Persist
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try (Connection c = dataSource.getConnection();
+                 PreparedStatement ps = c.prepareStatement(
+                         "INSERT INTO shush (uuid, enabled, orig_cmdspy, orig_potionspy, orig_staffchat_hidden) " +
+                                 "VALUES (?, TRUE, ?, ?, ?) " +
+                                 "ON DUPLICATE KEY UPDATE enabled=VALUES(enabled), orig_cmdspy=VALUES(orig_cmdspy), orig_potionspy=VALUES(orig_potionspy), orig_staffchat_hidden=VALUES(orig_staffchat_hidden)")) {
+                ps.setString(1, id.toString());
+                ps.setBoolean(2, cmdSpyEnabled);
+                ps.setBoolean(3, potionSpyEnabled);
+                ps.setBoolean(4, staffChatHidden);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                log.warning("[Shush] persist enable failed for " + id + ": " + e.getMessage());
+            }
+        });
     }
     private final Map<UUID, Originals> originals = new ConcurrentHashMap<>();
 
@@ -96,51 +135,6 @@ public class ShushService {
         return false;
     }
 
-    /** Enable shush: capture originals, disable notifications, persist. */
-    public void enable(Player p) {
-        final UUID id = p.getUniqueId();
-
-        // Capture originals
-        boolean cmdSpyEnabled = !plugin.isCmdSpyDisabled(id);
-        boolean __potionTmp = false;
-        try {
-            __potionTmp = (plugin.getPotionSpyService() != null) && plugin.getPotionSpyService().isEnabled(id);
-        } catch (Throwable t) {
-            // ignore
-        }
-        final boolean potionSpyEnabled = __potionTmp;
-        boolean staffChatHidden = plugin.isStaffChatHidden(id);
-
-        originals.put(id, new Originals(cmdSpyEnabled, potionSpyEnabled, staffChatHidden));
-
-        // Disable all notification channels
-        plugin.setCmdSpy(p, false); // disable CommandSpy
-        if (plugin.getPotionSpyService() != null) {
-            plugin.getPotionSpyService().setEnabled(id, false);
-        }
-        plugin.setStaffChatHidden(p, true); // hide staff chat receive (also blocks speaking per plugin logic)
-
-        enabled.add(id);
-        enabledMisses.remove(id);
-
-        // Persist
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try (Connection c = dataSource.getConnection();
-                 PreparedStatement ps = c.prepareStatement(
-                         "INSERT INTO shush (uuid, enabled, orig_cmdspy, orig_potionspy, orig_staffchat_hidden) " +
-                                 "VALUES (?, TRUE, ?, ?, ?) " +
-                                 "ON DUPLICATE KEY UPDATE enabled=VALUES(enabled), orig_cmdspy=VALUES(orig_cmdspy), orig_potionspy=VALUES(orig_potionspy), orig_staffchat_hidden=VALUES(orig_staffchat_hidden)")) {
-                ps.setString(1, id.toString());
-                ps.setBoolean(2, cmdSpyEnabled);
-                ps.setBoolean(3, potionSpyEnabled);
-                ps.setBoolean(4, staffChatHidden);
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                log.warning("[Shush] persist enable failed for " + id + ": " + e.getMessage());
-            }
-        });
-    }
-
     /** Disable shush: restore originals (if known), persist. */
     public void disable(Player p) {
         final UUID id = p.getUniqueId();
@@ -152,11 +146,11 @@ public class ShushService {
         }
         if (o != null) {
             // Restore states
-            plugin.setCmdSpy(p, o.cmdSpyEnabled);
+            plugin.getCommandSpyManager().setCmdSpy(p, o.cmdSpyEnabled);
             if (plugin.getPotionSpyService() != null) {
                 plugin.getPotionSpyService().setEnabled(id, o.potionSpyEnabled);
             }
-            plugin.setStaffChatHidden(p, o.staffChatHidden);
+            plugin.getStaffChatManager().setStaffChatHidden(p, o.staffChatHidden);
         }
 
         enabled.remove(id);
@@ -173,5 +167,9 @@ public class ShushService {
                 log.warning("[Shush] persist disable failed for " + id + ": " + e.getMessage());
             }
         });
+    }
+
+    // In-memory originals for quick restores (also persisted)
+    private record Originals(boolean cmdSpyEnabled, boolean potionSpyEnabled, boolean staffChatHidden) {
     }
 }

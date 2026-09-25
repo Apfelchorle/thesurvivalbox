@@ -3,14 +3,14 @@ package org.thesandbox.core.util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 public class PterodactylBridge {
 
     public static void sendConsoleCommand(String panelUrl, String apiKey, String serverId, String command) throws IOException {
         String endpoint = stripTrailingSlash(panelUrl) + "/api/client/servers/" + serverId + "/command";
-        HttpURLConnection conn = (HttpURLConnection) new URL(endpoint).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(endpoint).toURL().openConnection();
 
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Authorization", "Bearer " + apiKey);

@@ -33,10 +33,10 @@ public class CommandSpyCommand implements ISubCommand
 
         if (args.length == 0 || args[0].equalsIgnoreCase("toggle"))
         {
-            boolean currentlyEnabled = !plugin.isCmdSpyDisabled(player.getUniqueId());
+            boolean currentlyEnabled = !plugin.getCommandSpyManager().isCmdSpyDisabled(player.getUniqueId());
             boolean newState = !currentlyEnabled;
 
-            plugin.setCmdSpy(player, newState);
+            plugin.getCommandSpyManager().setCmdSpy(player, newState);
 
             player.sendMessage(ChatColor.translateAlternateColorCodes('&',
             "&7&lCommand &8» &7CommandSpy has been "
@@ -51,7 +51,7 @@ public class CommandSpyCommand implements ISubCommand
         {
             case "on":
             {
-                plugin.setCmdSpy(player, true);
+                plugin.getCommandSpyManager().setCmdSpy(player, false);
 
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&',
                 "&7&lCommand &8» &7CommandSpy has been enabled."));
@@ -60,7 +60,7 @@ public class CommandSpyCommand implements ISubCommand
 
             case "off":
             {
-                plugin.setCmdSpy(player, false);
+                plugin.getCommandSpyManager().setCmdSpy(player, false);
 
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&',
                 "&7&lCommand &8» &7CommandSpy has been &cdisabled."));
@@ -69,7 +69,7 @@ public class CommandSpyCommand implements ISubCommand
 
             case "status":
             {
-                boolean enabled = !plugin.isCmdSpyDisabled(player.getUniqueId());
+                boolean enabled = !plugin.getCommandSpyManager().isCmdSpyDisabled(player.getUniqueId());
 
                 player.sendMessage(ChatColor.translateAlternateColorCodes('&',
                 "&7&lCommand &8» &7CommandSpy is currently "

@@ -1,31 +1,38 @@
 package org.thesandbox.core.commands;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.thesandbox.core.util.GenericDataKeys;
 
 public final class CommandMessages
 {
-    public CommandMessages()
+    private CommandMessages()
     {
+        throw new UnsupportedOperationException("Utility class");
     }
 
     public static String command(String message)
     {
-        return apply("&7&lCommand &8» &7", message, false);
+        return apply(GenericDataKeys.CMD_MSGS_COMMAND, message, false);
     }
 
     public static String error(String message)
     {
-        return apply("&c&lError &8» &c", message, false);
+        return apply(GenericDataKeys.CMD_MSGS_ERROR, message, false);
     }
 
     public static String usage(String message)
     {
-        return apply("&c&lUsage &8» &c", message, true);
+        return apply(GenericDataKeys.CMD_MSGS_USAGE, message, true);
     }
 
     public static String server(String message)
     {
-        return apply("&c&lServer &8» &c", message, false);
+        return apply(GenericDataKeys.CMD_MSGS_SERVER, message, false);
+    }
+
+    public static String information(String message) {
+        return apply(GenericDataKeys.CMD_MSGS_INFO, message, false);
     }
 
     public static String apply(String prefix, String message, boolean usage)
@@ -42,11 +49,18 @@ public final class CommandMessages
                 body = body.substring(6).stripLeading();
             }
         }
-        return ChatColor.translateAlternateColorCodes('&', prefix) + body;
+
+        // Serializes to section-formatted String (§c) while supporting legacy hex (&#ffffff)
+        Component comp = LegacyComponentSerializer.legacyAmpersand().deserialize(prefix + body);
+        return LegacyComponentSerializer.legacySection().serialize(comp);
     }
 
     public static String stripLeadingColor(String input)
     {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
         String value = input;
         boolean changed = true;
 
@@ -75,6 +89,7 @@ public final class CommandMessages
                 }
             }
 
+            // Standard Hex (&#ffffff or §#ffffff)
             if (value.length() >= 8 && (value.startsWith("&#") || value.startsWith("§#")))
             {
                 boolean valid = true;
@@ -94,10 +109,11 @@ public final class CommandMessages
                 }
             }
 
+            // Standard legacy color/formatting codes (&0-&f, &k-&o, &r)
             if (value.length() >= 2 && (value.charAt(0) == '§' || value.charAt(0) == '&'))
             {
                 char code = Character.toLowerCase(value.charAt(1));
-                if ((code >= '0' && code <= '9') || (code >= 'a' && code <= 'f') || code == 'r')
+                if (isFormattingOrColor(code))
                 {
                     value = value.substring(2);
                     changed = true;
@@ -106,6 +122,12 @@ public final class CommandMessages
         }
 
         return value;
+    }
+
+    private static boolean isFormattingOrColor(char code) {
+        return (code >= '0' && code <= '9')
+                || (code >= 'a' && code <= 'f')
+                || (code >= 'k' && code <= 'o');
     }
 
     public static boolean isHex(char c)

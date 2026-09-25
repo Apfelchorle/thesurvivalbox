@@ -1,10 +1,11 @@
-package org.thesandbox.core;
+package org.thesandbox.core.listeners;
 
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.thesandbox.core.services.ManageChatService;
 
 /**
  * Cancels chat while muted and informs the speaker in red.

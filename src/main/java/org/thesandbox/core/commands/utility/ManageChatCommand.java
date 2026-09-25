@@ -7,9 +7,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.thesandbox.core.ManageChatService;
 import org.thesandbox.core.commands.CommandMessages;
 import org.thesandbox.core.commands.ISubCommand;
+import org.thesandbox.core.services.ManageChatService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,8 +58,15 @@ public class ManageChatCommand implements ISubCommand, TabCompleter {
                 Bukkit.broadcastMessage(CommandMessages.server(ChatColor.RED + sender.getName() + " - Cleared the chat"));
                 return true;
             }
+            case "forceclear": {
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    for (int i = 0; i < 100; i++) p.sendMessage(" ");
+                }
+                Bukkit.broadcastMessage(CommandMessages.server("&c" + sender.getName() + " - Force Cleared the chat"));
+                return true;
+            }
             default: {
-                sender.sendMessage(CommandMessages.usage(ChatColor.RED + "Usage: /" + label + " <mute|clear>"));
+                sender.sendMessage(CommandMessages.usage(ChatColor.RED + "Usage: /" + label + " <mute|clear|forceclear>"));
                 return true;
             }
         }

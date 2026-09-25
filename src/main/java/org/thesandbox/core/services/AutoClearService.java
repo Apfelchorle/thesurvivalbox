@@ -1,4 +1,4 @@
-package org.thesandbox.core;
+package org.thesandbox.core.services;
 
 import java.util.Set;
 import java.util.UUID;

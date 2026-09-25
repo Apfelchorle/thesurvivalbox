@@ -7,7 +7,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.thesandbox.core.TheSandboxCore;
-import org.thesandbox.core.commands.CommandMessages;
 import org.thesandbox.core.commands.ISubCommand;
 import org.thesandbox.core.login.LoginService;
 
@@ -68,26 +67,26 @@ public class ListCommand implements ISubCommand
         int totalShown = staffLines.size() + playerLines.size();
 
         // Header
-        send(sender, CommandMessages.command("&7&m--------------------&r &dOnline (" + totalShown + ") &7&m--------------------"));
+        send(sender, "&7&m--------------------&r &dOnline (" + totalShown + ") &7&m--------------------");
 
         // Staff section (Operator, Admin, Staff)
-        send(sender, CommandMessages.command("&dStaff&r &7- &d" + staffLines.size()));
+        send(sender, ("&dStaff&r &7- &d" + staffLines.size()));
         if (staffLines.isEmpty()) {
-            send(sender, CommandMessages.command("&7- &7No staff online."));
+            send(sender, ("&7- &7No staff online."));
         } else {
-            send(sender, CommandMessages.command("&8- " + String.join(color("&7, "), staffLines)));
+            send(sender, ("&8- " + String.join(color("&7, "), staffLines)));
         }
 
         // Players section (Master Builder, VIP, Player)
-        send(sender, CommandMessages.command("&dPlayers &8- &d" + playerLines.size()));
+        send(sender, ("&dPlayers &8- &d" + playerLines.size()));
         if (playerLines.isEmpty()) {
-            send(sender, CommandMessages.command("&7- &7No players online."));
+            send(sender, ("&7- &7No players online."));
         } else {
-            send(sender, CommandMessages.command("&7- " + String.join(color("&7, "), playerLines)));
+            send(sender, ("&7- " + String.join(color("&7, "), playerLines)));
         }
 
         // Footer
-        send(sender, CommandMessages.command("&7&m-----------------------------------------------------"));
+        send(sender, ("&7&m-----------------------------------------------------"));
         return true;
     }
 

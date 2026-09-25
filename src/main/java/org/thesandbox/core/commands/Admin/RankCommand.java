@@ -182,7 +182,7 @@ public class RankCommand implements ISubCommand {
                         String disp = LoginService.displayRankTitleCase(newRank);
                         String colored = ChatColor.translateAlternateColorCodes('&', newRank.color) + disp + ChatColor.RESET;
                         Bukkit.broadcastMessage(CommandMessages.server(ChatColor.RED + sender.getName() + " - " + "Setting " + playerName + "'s rank to " + disp));
-                        plugin.applyRankScoreboardTeam(online, newRank);
+                        plugin.getRankScoreboardManager().applyRankScoreboardTeam(online, newRank);
                         if (!sender.equals(online)) {
                             online.sendMessage(CommandMessages.command(ChatColor.AQUA + "Your rank has been set to " + colored + ChatColor.AQUA + "."));
                         }

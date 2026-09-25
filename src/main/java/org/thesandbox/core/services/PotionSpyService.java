@@ -1,4 +1,4 @@
-package org.thesandbox.core;
+package org.thesandbox.core.services;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -13,6 +13,7 @@ import org.bukkit.event.entity.PotionSplashEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.thesandbox.core.util.PotionSpyRepository;
 
 import javax.sql.DataSource;
 import java.util.*;

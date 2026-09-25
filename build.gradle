@@ -58,6 +58,24 @@ repositories {
 }
 
 dependencies {
+    // Enforces a single, consistent version across all Netty modules brought in by JDA
+    implementation platform('io.netty:netty-bom:4.2.17.Final') {
+        implementation('io.netty:netty-all:4.2.17.Final')
+    }
+
+    constraints {
+        implementation('org.codehaus.plexus:plexus-utils:4.0.3') {
+            because 'Security patch'
+        }
+        implementation('org.apache.commons:commons-lang3:3.20.0') {
+            because 'i said so'
+        }
+        implementation('com.fasterxml.jackson.core:2.21.4') {
+            because 'i said so'
+        }
+    }
+
+    compileOnly 'com.github.retrooper:packetevents-spigot:2.13.0'
     compileOnly 'io.papermc.paper:paper-api:26.1.2.build.63-stable'
     compileOnly 'net.luckperms:api:5.4'
     compileOnly('net.essentialsx:EssentialsX:2.20.1') {
@@ -69,7 +87,7 @@ dependencies {
     compileOnly 'litebans:api:0.6.1'
 
     implementation 'com.zaxxer:HikariCP:5.1.0'
-    implementation 'com.mysql:mysql-connector-j:9.0.0'
+    implementation 'com.mysql:mysql-connector-j:9.3.0'
 
     implementation('net.dv8tion:JDA:5.0.0') {
         exclude group: 'org.slf4j', module: 'slf4j-simple'
@@ -95,18 +113,16 @@ tasks.named('shadowJar') {
     exclude 'META-INF/*.DSA'
     exclude 'META-INF/*.RSA'
 
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     mergeServiceFiles()
-    filesNotMatching('META-INF/services/**') {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    }
 
     relocate 'com.zaxxer.hikari', 'org.thesandbox.libs.hikari'
     relocate 'com.mysql', 'org.thesandbox.libs.mysql'
     relocate 'net.dv8tion.jda', 'org.thesandbox.libs.jda'
     relocate 'okhttp3', 'org.thesandbox.libs.okhttp3'
     relocate 'okio', 'org.thesandbox.libs.okio'
-    relocate 'com.fasterxml', 'org.thesandbox.libs.fasterxml'
+    relocate 'com.fasterxml.jackson', 'org.thesandbox.libs.jackson'
+    relocate 'io.netty', 'org.thesandbox.libs.netty'
 }
 
 tasks.named('build') {

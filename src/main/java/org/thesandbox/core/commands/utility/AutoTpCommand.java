@@ -8,7 +8,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.thesandbox.core.AutoTpService;
+import org.thesandbox.core.services.AutoTpService;
 import org.thesandbox.core.commands.ISubCommand;
 
 import java.util.ArrayList;

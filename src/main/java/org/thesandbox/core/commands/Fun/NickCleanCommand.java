@@ -22,7 +22,7 @@ public class NickCleanCommand implements ISubCommand
     private final Essentials essentials;
 
     // Blocked chat codes: &0 (black), &k (obfuscated), &m (strikethrough), &n (underline)
-    private static final Pattern BLOCKED = Pattern.compile("(?i)(?:§|&)[0kmn]");
+    private static final Pattern BLOCKED = Pattern.compile("(?i)[§&][0kmn]");
 
     public NickCleanCommand(JavaPlugin plugin)
     {

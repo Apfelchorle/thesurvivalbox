@@ -1,4 +1,4 @@
-package org.thesandbox.core;
+package org.thesandbox.core.services;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;

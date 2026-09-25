@@ -9,11 +9,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.thesandbox.core.commands.CommandMessages;
 import org.thesandbox.core.commands.ISubCommand;
+import org.thesandbox.core.fun.Utils;
 
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class SayCommand implements ISubCommand
 {
@@ -22,17 +22,17 @@ public class SayCommand implements ISubCommand
     {
         if (args.length == 0)
         {
-            sender.sendMessage(CommandMessages.usage(ChatColor.RED + "Usage: /" + label + " <message>"));
+            sender.sendMessage(CommandMessages.usage("&4" + "Usage: /" + label + " <message>"));
             return true;
         }
 
         final String rawMessage = String.join(" ", args);
         // Support & color codes (e.g. &d, &l, etc.)
-        final String coloredMessage = ChatColor.translateAlternateColorCodes('&', rawMessage);
+        final String coloredMessage = Utils.AdventureAPI(rawMessage);
 
         final String senderName = (sender instanceof Player p) ? p.getName() : "CONSOLE";
         //refrence message :  • Server » usfl » test
-        final String prefix = "&6 " + senderName + "&r&8 » &r";
+        final String prefix = Utils.AdventureAPI("&6" + senderName + "&r&8 » &r");
 
         // Detect @everyone (case-insensitive)
         final boolean pingEveryone = containsIgnoreCase(coloredMessage, "@everyone");
@@ -94,7 +94,7 @@ public class SayCommand implements ISubCommand
                 .map(Player::getName)
                 .filter(n -> n.toLowerCase(Locale.ENGLISH).startsWith(fragLower))
                 .sorted(String.CASE_INSENSITIVE_ORDER)
-                .collect(Collectors.toList());
+                .toList();
 
         List<String> out = new ArrayList<>(names.size() + 1);
 

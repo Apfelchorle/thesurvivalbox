@@ -1,13 +1,12 @@
 package org.thesandbox.core.commands.misc;
 
-import org.bukkit.ChatColor;
-import org.bukkit.attribute.Attribute;
+import org.bukkit.Registry;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.thesandbox.core.commands.ISubCommand;
+import org.thesandbox.core.fun.Utils;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -25,13 +24,15 @@ public class AttributeListCommand implements ISubCommand
     public boolean execute(CommandSender sender, Command command, String label, String[] args)
     {
         // List all attribute names (lowercase, sorted for readability)
-        String all = Arrays.stream(Attribute.values())
-                .map(a -> a.name().toLowerCase(Locale.ROOT))
+
+        String all = Registry.ATTRIBUTE.stream()
+                .map(a -> a.getKey().getKey().toLowerCase(Locale.ROOT))
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .collect(Collectors.joining(", "));
-        
-        sender.sendMessage(ChatColor.translateAlternateColorCodes('&',
-                "&7&lCommand &8» &7Possible attributes: " + ChatColor.GREEN + all));
+
+        String msg = "&7&lCommand &8» &7Possible attributes: " + "&a" + all;
+
+        sender.sendMessage(Utils.AdventureAPI(msg));
         return true;
     }
 

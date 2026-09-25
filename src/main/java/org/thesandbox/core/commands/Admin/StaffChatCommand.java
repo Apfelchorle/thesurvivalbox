@@ -9,6 +9,7 @@ import org.thesandbox.core.TheSandboxCore;
 import org.thesandbox.core.commands.CommandMessages;
 import org.thesandbox.core.commands.ISubCommand;
 import org.thesandbox.core.login.LoginService;
+import org.thesandbox.core.managers.StaffChatManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,12 +32,13 @@ public class StaffChatCommand implements ISubCommand {
                 return true;
             }
             String msg = String.join(" ", args);
-            plugin.broadcastStaffChat(
+
+            plugin.getStaffChatManager().broadcastStaffChat(
                     "Console",
                     msg,
                     "Console",
                     "&8",
-                    TheSandboxCore.Source.MINECRAFT
+                    StaffChatManager.Source.MINECRAFT
             );
             return true;
         }
@@ -61,7 +63,7 @@ public class StaffChatCommand implements ISubCommand {
                 return true;
             }
             boolean hidden = v.equals("on");
-            plugin.setStaffChatHidden(p, hidden);
+            plugin.getStaffChatManager().setStaffChatHidden(p, hidden);
             if (hidden) {
                 p.sendMessage(CommandMessages.command(ChatColor.GRAY + "You will no longer receive staff chat (and cannot speak in it). Use /" + label + " hide off to re-enable."));
             } else {
@@ -71,7 +73,7 @@ public class StaffChatCommand implements ISubCommand {
         }
 
         // Block sending if hidden
-        if (plugin.isStaffChatHidden(p.getUniqueId())) {
+        if (plugin.getStaffChatManager().isStaffChatHidden(p.getUniqueId())) {
             p.sendMessage(CommandMessages.error(ChatColor.RED + "You have staff chat hidden. Use /" + label + " hide off to talk again."));
             return true;
         }
@@ -100,12 +102,12 @@ public class StaffChatCommand implements ISubCommand {
         }
 
         // Broadcast to staff chat
-        plugin.broadcastStaffChat(
+        plugin.getStaffChatManager().broadcastStaffChat(
                 name,
                 msg,
                 roleTag,
                 roleColor,
-                TheSandboxCore.Source.MINECRAFT
+                StaffChatManager.Source.MINECRAFT
         );
         return true;
     }

@@ -25,4 +25,7 @@ public final class PlayerDataKeys {
 
     // STAFF
     public static final String VANISHED = "Vanished";
+
+    // CHATFILTER
+    public static final String CHATFILTER = "ChatFilterStatus";
 }

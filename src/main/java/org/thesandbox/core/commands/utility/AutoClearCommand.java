@@ -6,7 +6,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.thesandbox.core.AutoClearService;
+import org.thesandbox.core.services.AutoClearService;
 import org.thesandbox.core.commands.ISubCommand;
 
 import java.util.Collections;

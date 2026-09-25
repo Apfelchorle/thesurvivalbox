@@ -29,11 +29,13 @@ public class UpdateAllProxiesCommand implements ISubCommand {
     @Override
     public boolean execute(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("sandbox.superuser")) {
+            Bukkit.getLogger().warning(sender.name() + " does not have permission to use this command.");
             sender.sendMessage(Component.text("You do not have permission to use this command!", NamedTextColor.RED));
             return true;
         }
 
-        // 1. Update this proxy's own targets first.
+        Bukkit.getLogger().warning(sender.name() + " ran up to here");
+
         localUpdateCommand.execute(sender, command, label, args);
 
         // 2. Ask the other proxy to update itself too.

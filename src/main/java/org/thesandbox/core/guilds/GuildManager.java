@@ -19,7 +19,7 @@ import net.luckperms.api.model.user.User;
 import net.luckperms.api.model.user.UserManager;
 import net.luckperms.api.node.Node;
 import net.luckperms.api.node.types.PrefixNode;
-import org.thesandbox.core.HexColorUtil;
+import org.thesandbox.core.util.HexColorUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 

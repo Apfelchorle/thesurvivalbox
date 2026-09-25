@@ -1,0 +1,15 @@
+version: 2
+registries:
+  private-maven:
+    type: maven-repository
+    url: https://maven.example.com
+    username: ${{secrets.MAVEN_USERNAME}}
+    password: ${{secrets.MAVEN_PASSWORD}}
+
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    registries:
+      - private-maven
+    schedule:
+      interval: "weekly"

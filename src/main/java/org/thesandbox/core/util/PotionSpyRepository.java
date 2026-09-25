@@ -1,4 +1,4 @@
-package org.thesandbox.core;
+package org.thesandbox.core.util;
 
 import javax.sql.DataSource;
 import java.sql.*;

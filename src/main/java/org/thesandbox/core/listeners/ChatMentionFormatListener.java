@@ -1,8 +1,11 @@
-package org.thesandbox.core;
+package org.thesandbox.core.listeners;
 
 import com.earth2me.essentials.Essentials;
 import com.earth2me.essentials.User;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.luckperms.api.LuckPermsProvider;
@@ -14,8 +17,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.plugin.Plugin;
+import org.thesandbox.core.DiscordBridge;
+import org.thesandbox.core.TheSandboxCore;
+import org.thesandbox.core.fun.Utils;
+import org.thesandbox.core.util.HexColorUtil;
+import org.thesandbox.core.util.PlayerDataKeys;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,15 +30,17 @@ import java.util.regex.Pattern;
 public class ChatMentionFormatListener implements Listener
 {
     private final TheSandboxCore core;
+    private final ChatFilterEngine chatFilterEngine;
 
     // Adventure / MiniMessage
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private final LegacyComponentSerializer legacySerializer =
             LegacyComponentSerializer.legacySection();
 
-    public ChatMentionFormatListener(TheSandboxCore core)
+    public ChatMentionFormatListener(TheSandboxCore core, ChatFilterEngine chatFilterEngine)
     {
         this.core = core;
+        this.chatFilterEngine = chatFilterEngine;
     }
 
     // Case-insensitive word-boundary @everyone
@@ -39,41 +48,53 @@ public class ChatMentionFormatListener implements Listener
             Pattern.compile("(?i)(?<!\\w)@everyone(?!\\w)");
 
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void onAsyncChat(AsyncPlayerChatEvent event)
+    public void onAsyncChat(AsyncChatEvent event)
     {
         if (event.isCancelled()) return;
 
         final Player sender = event.getPlayer();
-        final String original = event.getMessage();
+        final Component originalComponent = event.message();
+        final String rawText = Utils.plainText(originalComponent);
+
+        final ChatFilterEngine.Result filterResult = sender.hasPermission("sandbox.staff")
+                ? null
+                : chatFilterEngine.scan(rawText);
 
         // Guild chat toggle: route through GuildManager so /gchat and toggled chat share formatting, spies, and console logging.
         var guilds = core.getGuildManager();
         if (guilds != null && guilds.isInGuild(sender.getUniqueId()) && guilds.isGuildChatToggled(sender.getUniqueId())) {
             event.setCancelled(true);
-            final String msg = original;
+            final String msg = rawText;
             Bukkit.getScheduler().runTask(core, () -> guilds.sendGuildChat(sender, msg));
             return;
         }
 
         // Detect if the player is trying to use MiniMessage (<red>Hello</red>, etc.)
-        final boolean useMiniMessage = looksLikeMiniMessage(original);
+        final boolean useMiniMessage = looksLikeMiniMessage(rawText);
 
         // ----- Color handling with &k restriction -----
-        String sanitized = original;
+        String sanitized = rawText;
         if (!sender.hasPermission("sandbox.staff")) {
             sanitized = sanitized.replaceAll("(?i)&k", "");
         }
 
-        // If using MiniMessage, don't translate & → § (let MiniMessage handle things / plain text)
-        String colored;
+        Component baseBodyComponent;
         if (useMiniMessage) {
-            colored = sanitized;
+            baseBodyComponent = miniMessage.deserialize(sanitized);
         } else {
-            colored = HexColorUtil.translate(sanitized);
-            if (!sender.hasPermission("sandbox.staff")) {
-                colored = colored.replaceAll("(?i)\u00A7k", "");
-            }
+            baseBodyComponent = Utils.legacyserializer(sanitized);
         }
+
+        // If using MiniMessage, don't translate & → § (let MiniMessage handle things / plain text)
+//        String colored;
+//        if (useMiniMessage) {
+//            colored = sanitized;
+//        } else {
+//            colored = HexColorUtil.translate(sanitized);
+//            if (!sender.hasPermission("sandbox.staff")) {
+//                colored = colored.replaceAll("(?i)\u00A7k", "");
+//            }
+//        }
 
         // We’ll do a custom rebroadcast to support per-recipient highlights + sounds.
         event.setCancelled(true);
@@ -82,71 +103,46 @@ public class ChatMentionFormatListener implements Listener
         // If another plugin cancelled the event first (like ChatReaction), the early return above prevents mirroring.
         DiscordBridge discord = core.getDiscord();
         if (discord != null && discord.isReady()) {
-            discord.sendPublicMessageFromMinecraft(sender, original);
+            discord.sendPublicMessageFromMinecraft(sender, rawText);
         }
 
         final boolean staffEveryone = sender.hasPermission("sandbox.staff")
-                && EVERYONE_PATTERN.matcher(original).find();
+                && EVERYONE_PATTERN.matcher(rawText).find();
 
         // Display name with LuckPerms prefix + Essentials nickname (if any), with spacing fixes
-        final String displayName = getDisplayWithPrefix(sender);
-
-        // capture for lambda
-        final String finalColored  = colored;
-        final String finalOriginal = original;
-        final boolean finalUseMiniMessage = useMiniMessage;
+        final Component headerComponent = getDisplayWithPrefixComponent(sender)
+                .append(Component.text(" » ", NamedTextColor.DARK_GRAY));
 
         Bukkit.getScheduler().runTask(core, () -> {
             for (Player viewer : Bukkit.getOnlinePlayers())
             {
-                String perViewerMsg = finalColored;
+                Component viewerBody = baseBodyComponent;
+
+                if (filterResult != null && filterResult.triggered) {
+                    boolean viewerWantsCensored = core.getDataListener() // however you expose PlayerDataListener from core
+                            .get(viewer.getUniqueId(), PlayerDataKeys.CHATFILTER, true);
+                    if (viewerWantsCensored) {
+                        viewerBody = filterResult.censoredComponent;
+                    }
+                }
 
                 // If sender is staff and used @everyone, highlight it for everyone
                 boolean pingThisViewer = false;
                 if (staffEveryone)
                 {
-                    if (finalUseMiniMessage) {
-                        perViewerMsg = replaceMention(
-                                perViewerMsg,
-                                EVERYONE_PATTERN,
-                                m -> "<yellow>@everyone</yellow>"
-                        );
-                    } else {
-                        perViewerMsg = replaceMention(
-                                perViewerMsg,
-                                EVERYONE_PATTERN,
-                                m -> ChatColor.YELLOW + "@everyone" + ChatColor.RESET
-                        );
-                    }
+                    viewerBody = highlightEveryone(baseBodyComponent);
                     pingThisViewer = true; // everyone gets the ping
                 }
-
                 // Then apply per-viewer name mention highlighting (@Name or bare Name)
-                perViewerMsg = highlightMentionsFor(viewer, perViewerMsg, finalUseMiniMessage);
+                viewerBody = highlightMentionsFor(viewer, viewerBody);
 
                 // Ping if they were mentioned directly, or if @everyone (by staff) was used
-                if (!pingThisViewer && isMentioned(finalOriginal, viewer.getName()))
+                if (!pingThisViewer && isMentioned(rawText, viewer.getName()))
                 {
                     pingThisViewer = true;
                 }
 
-                // Build header (name + colon) as legacy, so prefixes/nicks keep §/& colors
-                String headerLegacy = displayName
-                        + ChatColor.DARK_GRAY + " » "
-                        + ChatColor.RESET;
-
-                Component headerComponent = legacySerializer.deserialize(headerLegacy);
-
-                // Build body component: MiniMessage if used, otherwise legacy
-                Component bodyComponent;
-                if (finalUseMiniMessage) {
-                    bodyComponent = miniMessage.deserialize(perViewerMsg);
-                } else {
-                    bodyComponent = legacySerializer.deserialize(perViewerMsg);
-                }
-
-                Component full = headerComponent.append(bodyComponent);
-                viewer.sendMessage(full);
+                viewer.sendMessage(headerComponent.append(viewerBody));
 
                 if (pingThisViewer)
                 {
@@ -163,24 +159,79 @@ public class ChatMentionFormatListener implements Listener
                     }
                 }
             }
-
-            // Since normal chat is cancelled and manually rebroadcast above, also mirror it to console.
-            String consoleBody;
-            if (finalUseMiniMessage) {
-                try {
-                    consoleBody = legacySerializer.serialize(miniMessage.deserialize(finalColored));
-                } catch (Throwable ignored) {
-                    consoleBody = finalOriginal;
-                }
-            } else {
-                consoleBody = finalColored;
-            }
-            Bukkit.getConsoleSender().sendMessage(displayName + ChatColor.DARK_GRAY + " » " + ChatColor.RESET + consoleBody);
+            Bukkit.getConsoleSender().sendMessage(headerComponent.append(baseBodyComponent));
         });
     }
 
     /* ===== Display name building: LuckPerms prefix + Essentials nickname (fallback to Bukkit), with spacing fixes ===== */
 
+    private Component getPlayerNameComponent(Player p) {
+        String base = null;
+
+        try {
+            Plugin pl = Bukkit.getPluginManager().getPlugin("Essentials");
+            if (pl instanceof Essentials ess && pl.isEnabled()) {
+                User u = ess.getUser(p);
+                if (u != null) {
+                    String nickname = u.getNickname();
+                    if (nickname != null && !nickname.isBlank()) {
+                        base = nickname;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        if (base == null || base.isBlank()) {
+            String displayName = p.getDisplayName();
+            base = displayName.isBlank() ? p.getName() : displayName;
+        }
+
+        if (base.contains("&")) {
+            return LegacyComponentSerializer.legacyAmpersand().deserialize(base);
+        }
+
+        if (base.indexOf('§') >= 0) {
+            return LegacyComponentSerializer.legacySection().deserialize(base);
+        }
+
+        return Component.text(base, NamedTextColor.GRAY);
+    }
+
+    private Component getGuildPrefixComponent(Player p) {
+        try {
+            var guilds = core.getGuildManager();
+            if (guilds == null) return Component.empty();
+
+            var g = guilds.guildOf(p.getUniqueId());
+            if (g == null || g.tag() == null || g.tag().isEmpty()) return Component.empty();
+            String tag = g.tag();
+            if (tag.contains("§")) {
+                return LegacyComponentSerializer.legacySection().deserialize(tag);
+            }
+            return LegacyComponentSerializer.legacyAmpersand().deserialize(tag);
+        } catch (Throwable ignored) {
+            return Component.empty();
+        }
+    }
+
+    private Component getDisplayWithPrefixComponent(Player p) {
+        Component guildPrefix = getGuildPrefixComponent(p);
+        Component lpPrefix = getLuckPermsPrefixComponent(p);
+        Component nameComponent = getPlayerNameComponent(p);
+
+        TextComponent.Builder builder = Component.text();
+
+        if (!Component.empty().equals(guildPrefix)) {
+            builder.append(guildPrefix).append(Component.space());
+        }
+        if (!Component.empty().equals(lpPrefix)) {
+            builder.append(lpPrefix).append(Component.space());
+        }
+
+        builder.append(nameComponent);
+        return builder.build();
+    }
     private String getDisplayWithPrefix(Player p)
     {
         String base = getEssentialsDisplayName(p);
@@ -303,7 +354,8 @@ public class ChatMentionFormatListener implements Listener
             // Fall through to Bukkit display name.
         }
 
-        return p.getName();
+        String displayName = p.getDisplayName();
+        return displayName.isBlank() ? p.getName() : displayName;
     }
 
 
@@ -363,6 +415,23 @@ public class ChatMentionFormatListener implements Listener
         }
     }
 
+    private Component getLuckPermsPrefixComponent(Player p) {
+        try {
+            var lp = LuckPermsProvider.get();
+            var lpUser = lp.getUserManager().getUser(p.getUniqueId());
+            if (lpUser == null) return Component.empty();
+            String prefix = lpUser.getCachedData().getMetaData().getPrefix();
+            if (prefix == null || prefix.isEmpty()) return Component.empty();
+
+            if (prefix.contains("§")) {
+                return LegacyComponentSerializer.legacySection().deserialize(prefix);
+            }
+            return LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
+        } catch (Throwable ignored) {
+            return Component.empty();
+        }
+    }
+
     /* ===== Mention helpers ===== */
 
     private boolean isMentioned(String message, String playerName)
@@ -372,6 +441,36 @@ public class ChatMentionFormatListener implements Listener
         Pattern atPattern   = Pattern.compile("(?i)(?<!\\w)@" + Pattern.quote(playerName) + "(?!\\w)");
         Pattern barePattern = Pattern.compile("(?i)(?<!\\w)"  + Pattern.quote(playerName) + "(?!\\w)");
         return atPattern.matcher(message).find() || barePattern.matcher(message).find();
+    }
+
+
+    private Component highlightMentionsFor(Player target, Component message) {
+        if (target == null || message == null) return message;
+
+        final String name = target.getName();
+        Pattern atPattern = Pattern.compile("(?i)(?<!\\w)@" + Pattern.quote(name) + "(?!\\w)");
+        Pattern barePattern = Pattern.compile("(?i)(?<!\\w)" + Pattern.quote(name) + "(?!\\w)");
+
+        // Replace @Name
+        message = message.replaceText(builder -> builder
+                .match(atPattern)
+                .replacement(Component.text("@" + name, NamedTextColor.YELLOW))
+        );
+
+        // Replace bare Name
+        message = message.replaceText(builder -> builder
+                .match(barePattern)
+                .replacement(Component.text(name, NamedTextColor.YELLOW))
+        );
+
+        return message;
+    }
+
+    private Component highlightEveryone(Component message) {
+        return message.replaceText(builder -> builder
+                .match(EVERYONE_PATTERN)
+                .replacement(Component.text("@everyone", NamedTextColor.YELLOW))
+        );
     }
 
     private String highlightMentionsFor(Player target, String message, boolean useMiniMessage)

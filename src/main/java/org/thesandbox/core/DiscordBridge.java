@@ -23,8 +23,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import net.md_5.bungee.api.chat.*;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.BaseComponent;
 import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -36,7 +35,11 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.thesandbox.core.discord.model.ReportRecord;
+import org.thesandbox.core.fun.Utils;
+import org.thesandbox.core.listeners.ChatFilterEngine;
+import org.thesandbox.core.listeners.PublicChatBridgeListener;
 import org.thesandbox.core.login.LoginService;
+import org.thesandbox.core.util.HexColorUtil;
 import org.thesandbox.core.util.PlayerDataKeys;
 import org.thesandbox.core.util.PlayerDataListener;
 
@@ -55,9 +58,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.thesandbox.core.fun.Utils.*;
+
 public class DiscordBridge extends ListenerAdapter
 {
     private final TheSandboxCore plugin;
+
+    private final ChatFilterEngine chatFilterEngine;
     private JDA jda;
     private final PlayerDataListener playerDataListener;
 
@@ -88,8 +95,10 @@ public class DiscordBridge extends ListenerAdapter
     private final Map<String, Deque<String>> byPlayer = new HashMap<>();
 
     // Constructors
-    public DiscordBridge(TheSandboxCore plugin, PlayerDataListener playerDataListener) {
-        this.plugin = plugin; this.playerDataListener = playerDataListener;
+    public DiscordBridge(TheSandboxCore plugin, ChatFilterEngine chatFilterEngine, PlayerDataListener playerDataListener) {
+        this.plugin = plugin;
+        this.chatFilterEngine = chatFilterEngine;
+        this.playerDataListener = playerDataListener;
     }
 
     public boolean start() {
@@ -161,10 +170,19 @@ public class DiscordBridge extends ListenerAdapter
             plugin.getLogger().warning("[Discord] Failed to send stop embed: " + e.getMessage());
         }
 
-        try {
-            if (jda != null) jda.shutdownNow();
-        } catch (Exception ignored) {}
-
+        if (jda != null) {
+            jda.shutdownNow();
+            log("[JDA] Triggered Shutdown...");
+            try {
+                jda.awaitShutdown(java.time.Duration.ofSeconds(30));
+                log("[JDA] Shutdown complete.");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log("[JDA] Shutdown wait interrupted.");
+            } catch (Exception e) {
+                dump(e, " [JDA] EXCEPTION : ");
+            }
+        }
         jda = null;
         schemuploadsChannel = null;
         staffChannel = null;
@@ -255,6 +273,12 @@ public class DiscordBridge extends ListenerAdapter
     @Override
     public void onGuildMemberJoin(@NotNull GuildMemberJoinEvent event) {
         // Currently unused, but kept for future auto-restore logic
+    }
+
+    // logger
+
+    public void log(String message) {
+        plugin.getLogger().info(message);
     }
 
     private Role getVerifiedRole(Guild g) {
@@ -457,48 +481,12 @@ public class DiscordBridge extends ListenerAdapter
         }
     }
 
-    /* ---------------------- Public chat: MC -> Discord ---------------------- */
-    public void sendPublicMessageFromMinecraft(Player player, String message) {
-        if (!plugin.isDiscordChatBridgeEnabled()) return;
-        TextChannel ch = getChatChannel();
-        if (ch == null) return;
+    private static String chatFilter(String s) {
+        if (s == null) return null;
+        List<String> badwords = new ArrayList<>();
+        String filteredmsg = s.replace("nigger", "n***er");
 
-        String template = plugin.getConfig().getString(
-                "discord.chat.mc-to-discord-format",
-                "**%rank%%player%** » %message%"
-        );
-
-        // Discord should show the server rank, not the player's guild/tag/LuckPerms prefix.
-        // Example: [Dev] pixelpaladinn instead of [Boss] pixelpaladinn.
-        String rankPrefix = rankPrefixForDiscord(player);
-
-        String out = template
-                // Keep this replacement for older configs that used %luckperms_prefix%; it now resolves to the real rank.
-                .replace("%luckperms_prefix%", rankPrefix)
-                .replace("%rank%", rankPrefix)
-                .replace("%rank_prefix%", rankPrefix)
-                .replace("%player%", player.getName())
-                .replace("%message%", replaceLinksWithMediaTag(stripAllColors(message)));
-
-        String safeOut = antiPingEveryoneHere(out);
-
-        if (plugin.getConfig().getBoolean("discord.use-embeds", false)) {
-            ch.sendMessageEmbeds(new EmbedBuilder().setDescription(safeOut).build()).queue(
-                    ok -> {},
-                    err -> {
-                        plugin.getLogger().warning("[Discord] Failed to send public chat embed, trying plain message: " + err.getMessage());
-                        ch.sendMessage(safeOut).queue(
-                                ok2 -> {},
-                                err2 -> plugin.getLogger().warning("[Discord] Failed to send public chat message: " + err2.getMessage())
-                        );
-                    }
-            );
-        } else {
-            ch.sendMessage(safeOut).queue(
-                    ok -> {},
-                    err -> plugin.getLogger().warning("[Discord] Failed to send public chat message: " + err.getMessage())
-            );
-        }
+        return filteredmsg;
     }
 
     // erm,  class --> public this ---> private that
@@ -528,211 +516,8 @@ public class DiscordBridge extends ListenerAdapter
         return discordRankPrefix(rank);
     }
 
-    /* ---------------------- Discord -> MC (staff & public) ---------------------- */
-    @Override
-    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-        if (!event.isFromGuild() || event.getAuthor().isBot()) return;
-
-        String channelId = event.getChannel().getId();
-
-        // --- Staff channel -> in-game staff chat ---
-        TextChannel staff = getStaffChannel();
-        if (staff != null && Objects.equals(channelId, staff.getId())) {
-            if (!plugin.isDiscordChatBridgeEnabled()) return;
-            String template = plugin.getConfig().getString(
-                    "staffchat-from-discord-format",
-                    "&8[&3&lDISCORD&8] | [&b&lSTAFF&8]&r %role%%rolecolor%%name% &8» &f%message%"
-            );
-
-            Member m = event.getMember();
-            String roleName = "";
-            String roleColorCode = "";
-
-            if (m != null && !m.getRoles().isEmpty()) {
-                Role top = m.getRoles().get(0);
-                roleName = top.getName() != null ? top.getName() : "";
-                java.awt.Color c = top.getColor();
-                if (c != null) roleColorCode = toLegacyHex(c);
-            }
-
-            String name = (m != null ? m.getEffectiveName() : event.getAuthor().getName());
-            String msg  = event.getMessage().getContentDisplay();
-
-            String bracketedRole = "";
-            if (!roleName.isEmpty()) {
-                bracketedRole = "&8[" + (roleColorCode == null ? "" : roleColorCode) + roleName + "&8] ";
-            }
-
-            final String MESSAGE_TOKEN = "%MESSAGE_TOKEN%";
-
-            String outAmpWithToken = template
-                    .replace("%role%", bracketedRole)
-                    .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
-                    .replace("%name%", name)
-                    .replace("%message%", MESSAGE_TOKEN)
-                    .replace("  ", " ");
-
-            // Collect media: attachments + direct URLs (any link now)
-            java.util.List<String> mediaUrls = new java.util.ArrayList<>();
-            List<Message.Attachment> atts = event.getMessage().getAttachments();
-            for (Message.Attachment att : atts) mediaUrls.add(att.getUrl());
-            mediaUrls.addAll(extractAllUrls(msg));
-            addEmbedMediaPlaceholders(event.getMessage(), mediaUrls);
-
-            if (mediaUrls.isEmpty()) {
-                String outAmpFull = template
-                        .replace("%role%", bracketedRole)
-                        .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
-                        .replace("%name%", name)
-                        .replace("%message%", msg)
-                        .replace("  ", " ");
-
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        if (!p.hasPermission("sandbox.staff")) continue;
-                        String perViewer = highlightDiscordMentionAmpersand(outAmpFull, p.getName(), "&f");
-                        boolean ping = !perViewer.equals(outAmpFull);
-                        p.sendMessage(HexColorUtil.translate(perViewer));
-                        if (ping) {
-                            try { p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F); } catch (Throwable ignored) {}
-                        }
-                    }
-                });
-            } else {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        if (!p.hasPermission("sandbox.staff")) continue;
-
-                        String perViewer = highlightDiscordMentionAmpersand(outAmpWithToken, p.getName(), "&f");
-                        int i = perViewer.indexOf(MESSAGE_TOKEN);
-                        String before = i >= 0 ? perViewer.substring(0, i) : perViewer;
-                        String after  = i >= 0 ? perViewer.substring(i + MESSAGE_TOKEN.length()) : "";
-
-                        boolean ping = messageMentions(msg, p.getName());
-
-                        if (mediaUrls.isEmpty()) {
-                            String full = (i >= 0) ? (before + msg + after) : perViewer;
-                            p.sendMessage(HexColorUtil.translate(full));
-                        } else {
-                            String cleanMsg = stripAllUrls(msg).trim();
-                            BaseComponent[] messageComps = cleanMsg.isBlank()
-                                    ? new BaseComponent[0]
-                                    : legacy(cleanMsg + " ");
-                            BaseComponent[] mediaComps = clickableMediaTagOrLegacy("&e[Media]", firstClickableMediaUrl(mediaUrls));
-                            BaseComponent[] finalMsg = join(
-                                    legacy(before),
-                                    messageComps,
-                                    mediaComps,
-                                    legacy(after)
-                            );
-                            p.spigot().sendMessage(finalMsg);
-                        }
-
-                        if (ping) {
-                            try { p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F); } catch (Throwable ignored) {}
-                        }
-                    }
-                });
-            }
-            return;
-        }
-
-        // --- Public chat channel -> in-game public chat ---
-        TextChannel chat = getChatChannel();
-        if (chat != null && Objects.equals(channelId, chat.getId())) {
-            if (!plugin.isDiscordChatBridgeEnabled()) return;
-            String template = plugin.getConfig().getString(
-                    "discord.chat.discord-to-mc-format",
-                    "%role% %user% &8» &r%message%"
-            );
-
-            Member m = event.getMember();
-            String roleName = "";
-            String roleColorCode = "";
-
-            if (m != null && !m.getRoles().isEmpty()) {
-                Role top = m.getRoles().get(0);
-                roleName = top.getName() != null ? top.getName() : "";
-                java.awt.Color c = top.getColor();
-                if (c != null) roleColorCode = toLegacyHex(c);
-            }
-
-            boolean noRoles = (m == null || m.getRoles().isEmpty());
-            String userBase = (m != null ? m.getEffectiveName() : event.getAuthor().getName());
-            String userColored = ((roleColorCode != null && !roleColorCode.isEmpty()) ? roleColorCode : "&a") + userBase;
-
-            String roleFormatted = "";
-            if (!roleName.isEmpty()) {
-                roleFormatted = "&8[" + (roleColorCode == null ? "" : roleColorCode) + roleName + "&8]";
-            }
-
-            String msg = event.getMessage().getContentDisplay();
-            final String MESSAGE_TOKEN = "%MESSAGE_TOKEN%";
-
-            String outAmpWithToken = template
-                    .replace("%role%", roleFormatted)
-                    .replace("%roletag%", roleFormatted)
-                    .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
-                    .replace("%user%", userColored)
-                    .replace("%message%", MESSAGE_TOKEN)
-                    .replace("  ", " ");
-
-            // Collect media: attachments + direct URLs (any link now)
-            java.util.List<String> mediaUrls = new java.util.ArrayList<>();
-            List<Message.Attachment> atts = event.getMessage().getAttachments();
-            for (Message.Attachment att : atts) mediaUrls.add(att.getUrl());
-            mediaUrls.addAll(extractAllUrls(msg));
-            addEmbedMediaPlaceholders(event.getMessage(), mediaUrls);
-
-            if (mediaUrls.isEmpty()) {
-                String outAmpFull = template
-                        .replace("%role%", roleFormatted)
-                        .replace("%roletag%", roleFormatted)
-                        .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
-                        .replace("%user%", userColored)
-                        .replace("%message%", msg)
-                        .replace("  ", " ");
-
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        String perViewer = highlightDiscordMentionAmpersand(outAmpFull, p.getName());
-                        boolean ping = !perViewer.equals(outAmpFull);
-                        p.sendMessage(HexColorUtil.translate(perViewer));
-                        if (ping) {
-                            try { p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F); } catch (Throwable ignored) {}
-                        }
-                    }
-                });
-            } else {
-                Bukkit.getScheduler().runTask(plugin, () -> {
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        String perViewer = highlightDiscordMentionAmpersand(outAmpWithToken, p.getName());
-                        int i = perViewer.indexOf(MESSAGE_TOKEN);
-                        String before = i >= 0 ? perViewer.substring(0, i) : perViewer;
-                        String after  = i >= 0 ? perViewer.substring(i + MESSAGE_TOKEN.length()) : "";
-
-                        boolean ping = messageMentions(msg, p.getName());
-
-                        String cleanMsg = stripAllUrls(msg).trim();
-                        BaseComponent[] messageComps = cleanMsg.isBlank()
-                                ? new BaseComponent[0]
-                                : legacy(cleanMsg + " ");
-                        BaseComponent[] mediaComps = clickableMediaTagOrLegacy("&e[Media]", firstClickableMediaUrl(mediaUrls));
-                        BaseComponent[] finalMsg = join(
-                                legacy(before),
-                                messageComps,
-                                mediaComps,
-                                legacy(after)
-                        );
-                        p.spigot().sendMessage(finalMsg);
-
-                        if (ping) {
-                            try { p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F); } catch (Throwable ignored) {}
-                        }
-                    }
-                });
-            }
-        }
+    private static boolean messageMentions(String content, String mcName) {
+        return Utils.messageMentions(content, mcName);
     }
 
     /* -------------------- Slash commands: ONLY /list and /masterbuilder -------------------- */
@@ -881,21 +666,9 @@ public class DiscordBridge extends ListenerAdapter
                 .queue();
     }
 
-    // ===== Used by older moderation commands (kept for now but unused) =====
-        private record ParseResult(boolean ok, boolean permanent, String durationToken, String error) {
-
-        static ParseResult okPerm() {
-            return new ParseResult(true, true, null, null);
-        }
-
-        static ParseResult okWith(String tok) {
-            return new ParseResult(true, false, tok, null);
-        }
-
-        static ParseResult fail(String msg) {
-            return new ParseResult(false, false, null, msg);
-        }
-        }
+    private static String highlightDiscordMentionAmpersand(String amp, String mcName) {
+        return Utils.highlightDiscordMentionAmpersand(amp, mcName, "&r");
+    }
 
     /** Accepts Ns/Nm/Nd (max 1d). Senior Admin may use "0" for permanent. */
     private ParseResult parseDuration(String raw, boolean isSrAdmin) {
@@ -1202,26 +975,6 @@ public class DiscordBridge extends ListenerAdapter
         return deltaTime < 20000; // 20+ Seconds != Spam
     }
 
-    public void sandboxSeesAll(String playerName, String fileName, int FileSize) {
-        File logFile = new File(plugin.getDataFolder(), "schematics.yml");
-        FileConfiguration config = YamlConfiguration.loadConfiguration(logFile);
-
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        String formattedFileSize = (FileSize / 1024 / 1024) + " MB).";
-        String entry = fileName + " (Uploaded: " + timestamp + " FileSize: " + formattedFileSize + ")";
-
-        List<String> userSchematics = config.getStringList(playerName + ".Owned Schematics");
-        userSchematics.add(entry);
-
-        config.set(playerName + ".Uploaded Schems", userSchematics);
-
-        try {
-            config.save(logFile);
-        } catch (IOException e) {
-            plugin.getLogger().severe("Could not save schematics.yml: " + e.getMessage());
-        }
-    }
-
     public void createSchematicFile(String fileName, Message.Attachment attachment,
                                     SlashCommandInteractionEvent event) {
         Plugin fawe = Bukkit.getServer().getPluginManager().getPlugin("FastAsyncWorldEdit");
@@ -1262,6 +1015,228 @@ public class DiscordBridge extends ListenerAdapter
                     event.getHook().editOriginal("Failed to save the schematic file.").queue();
                     return null;
                 });
+    }
+
+    /* ---------------------- Discord -> MC (staff & public) ---------------------- */
+    @Override
+    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        if (!event.isFromGuild() || event.getAuthor().isBot()) return;
+
+        String channelId = event.getChannel().getId();
+
+        // --- Staff channel -> in-game staff chat ---
+        TextChannel staff = getStaffChannel();
+        if (staff != null && Objects.equals(channelId, staff.getId())) {
+            if (!plugin.isDiscordChatBridgeEnabled()) return;
+            String template = plugin.getConfig().getString(
+                    "staffchat-from-discord-format",
+                    "&8[&3&lDISCORD&8] | [&b&lSTAFF&8]&r %role%%rolecolor%%name% &8» &f%message%"
+            );
+
+            Member m = event.getMember();
+            String roleName = "";
+            String roleColorCode = "";
+
+            if (m != null && !m.getRoles().isEmpty()) {
+                Role top = m.getRoles().get(0);
+                roleName = top.getName() != null ? top.getName() : "";
+                java.awt.Color c = top.getColor();
+                if (c != null) roleColorCode = toLegacyHex(c);
+            }
+
+            String name = (m != null ? m.getEffectiveName() : event.getAuthor().getName());
+            String msg  = event.getMessage().getContentDisplay();
+
+            String bracketedRole = "";
+            if (!roleName.isEmpty()) {
+                bracketedRole = "&8[" + (roleColorCode == null ? "" : roleColorCode) + roleName + "&8] ";
+            }
+
+            final String MESSAGE_TOKEN = "%MESSAGE_TOKEN%";
+
+            String outAmpWithToken = template
+                    .replace("%role%", bracketedRole)
+                    .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
+                    .replace("%name%", name)
+                    .replace("%message%", MESSAGE_TOKEN)
+                    .replace("  ", " ");
+
+            // Collect media: attachments + direct URLs (any link now)
+            java.util.List<String> mediaUrls = new java.util.ArrayList<>();
+            List<Message.Attachment> atts = event.getMessage().getAttachments();
+            for (Message.Attachment att : atts) mediaUrls.add(att.getUrl());
+            mediaUrls.addAll(extractAllUrls(msg));
+            addEmbedMediaPlaceholders(event.getMessage(), mediaUrls);
+
+            if (mediaUrls.isEmpty()) {
+                String outAmpFull = template
+                        .replace("%role%", bracketedRole)
+                        .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
+                        .replace("%name%", name)
+                        .replace("%message%", msg)
+                        .replace("  ", " ");
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (!p.hasPermission("sandbox.staff")) continue;
+                        String perViewer = Utils.highlightDiscordMentionAmpersand(outAmpFull, p.getName(), "&f");
+                        boolean ping = !perViewer.equals(outAmpFull);
+                        p.sendMessage(HexColorUtil.translate(perViewer));
+                        if (ping) {
+                            try { p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F); } catch (Throwable ignored) {}
+                        }
+                    }
+                });
+            } else {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (!p.hasPermission("sandbox.staff")) continue;
+
+                        String perViewer = Utils.highlightDiscordMentionAmpersand(outAmpWithToken, p.getName(), "&f");
+                        int i = perViewer.indexOf(MESSAGE_TOKEN);
+                        String before = i >= 0 ? perViewer.substring(0, i) : perViewer;
+                        String after  = i >= 0 ? perViewer.substring(i + MESSAGE_TOKEN.length()) : "";
+
+                        boolean ping = messageMentions(msg, p.getName());
+
+                        if (mediaUrls.isEmpty()) {
+                            String full = (i >= 0) ? (before + msg + after) : perViewer;
+                            p.sendMessage(HexColorUtil.translate(full));
+                        } else {
+                            String cleanMsg = stripAllUrls(msg).trim();
+                            BaseComponent[] messageComps = cleanMsg.isBlank()
+                                    ? new BaseComponent[0]
+                                    : legacy(cleanMsg + " ");
+                            BaseComponent[] mediaComps = clickableMediaTagOrLegacy("&e[Media]", firstClickableMediaUrl(mediaUrls));
+                            BaseComponent[] finalMsg = join(
+                                    legacy(before),
+                                    messageComps,
+                                    mediaComps,
+                                    legacy(after)
+                            );
+                            p.spigot().sendMessage(finalMsg);
+                        }
+
+                        if (ping) {
+                            try { p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F); } catch (Throwable ignored) {}
+                        }
+                    }
+                });
+            }
+            return;
+        }
+
+        // --- Public chat channel -> in-game public chat ---
+        TextChannel chat = getChatChannel();
+        if (chat != null && Objects.equals(channelId, chat.getId())) {
+            if (!plugin.isDiscordChatBridgeEnabled()) return;
+            String template = plugin.getConfig().getString(
+                    "discord.chat.discord-to-mc-format",
+                    "%role% %user% &8» &r%message%"
+            );
+
+            Member m = event.getMember();
+            String roleName = "";
+            String roleColorCode = "";
+
+            if (m != null && !m.getRoles().isEmpty()) {
+                Role top = m.getRoles().get(0);
+                roleName = top.getName() != null ? top.getName() : "";
+                java.awt.Color c = top.getColor();
+                if (c != null) roleColorCode = toLegacyHex(c);
+            }
+
+            boolean noRoles = (m == null || m.getRoles().isEmpty());
+            String userBase = (m != null ? m.getEffectiveName() : event.getAuthor().getName());
+            String userColored = ((roleColorCode != null && !roleColorCode.isEmpty()) ? roleColorCode : "&a") + userBase;
+
+            String roleFormatted = "";
+            if (!roleName.isEmpty()) {
+                roleFormatted = "&8[" + (roleColorCode == null ? "" : roleColorCode) + roleName + "&8]";
+            }
+
+            String msg = event.getMessage().getContentDisplay();
+            final ChatFilterEngine.Result filterResult = chatFilterEngine.scan(msg);
+            final String MESSAGE_TOKEN = "%MESSAGE_TOKEN%";
+
+            String outAmpWithToken = template
+                    .replace("%role%", roleFormatted)
+                    .replace("%roletag%", roleFormatted)
+                    .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
+                    .replace("%user%", userColored)
+                    .replace("%message%", MESSAGE_TOKEN)
+                    .replace("  ", " ");
+
+            // Collect media: attachments + direct URLs (any link now)
+            java.util.List<String> mediaUrls = new java.util.ArrayList<>();
+            List<Message.Attachment> atts = event.getMessage().getAttachments();
+            for (Message.Attachment att : atts) mediaUrls.add(att.getUrl());
+            mediaUrls.addAll(extractAllUrls(msg));
+            addEmbedMediaPlaceholders(event.getMessage(), mediaUrls);
+
+            if (mediaUrls.isEmpty()) {
+                String formattedBase = template
+                        .replace("%role%", roleFormatted)
+                        .replace("%roletag%", roleFormatted)
+                        .replace("%rolecolor%", roleColorCode == null ? "" : roleColorCode)
+                        .replace("%user%", userColored)
+                        .replace("  ", " ");
+
+                String uncensoredFull = formattedBase.replace("%message%", msg);
+                String censoredFull = filterResult.triggered ? formattedBase.replace("%message%", filterResult.censoredPlain) : uncensoredFull;
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        boolean viewerWantsCensored = filterResult.triggered
+                                && playerDataListener.get(p.getUniqueId(), PlayerDataKeys.CHATFILTER, false);
+
+                        String outAmpFullPerViewer = viewerWantsCensored ? censoredFull : uncensoredFull;
+
+                        String perViewer = highlightDiscordMentionAmpersand(outAmpFullPerViewer, p.getName());
+                        boolean ping = messageMentions(msg, p.getName());
+
+                        p.sendMessage(HexColorUtil.translate(perViewer));
+                        if (ping) {
+                            try {
+                                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F);
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    }
+                });
+            } else {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        boolean viewerWantsCensored = filterResult.triggered
+                                && playerDataListener.get(p.getUniqueId(), PlayerDataKeys.CHATFILTER, false);
+                        String viewerMsg = viewerWantsCensored ? filterResult.censoredPlain : msg;
+
+                        String perViewer = highlightDiscordMentionAmpersand(outAmpWithToken, p.getName());
+                        int i = perViewer.indexOf(MESSAGE_TOKEN);
+                        String before = i >= 0 ? perViewer.substring(0, i) : perViewer;
+                        String after  = i >= 0 ? perViewer.substring(i + MESSAGE_TOKEN.length()) : "";
+
+                        boolean ping = messageMentions(msg, p.getName());
+
+                        String cleanMsg = stripAllUrls(viewerMsg).trim();
+                        BaseComponent[] messageComps = cleanMsg.isBlank()
+                                ? new BaseComponent[0]
+                                : legacy(cleanMsg + " ");
+                        BaseComponent[] mediaComps = clickableMediaTagOrLegacy("&e[Media]", firstClickableMediaUrl(mediaUrls));
+                        BaseComponent[] finalMsg = join(
+                                legacy(before),
+                                messageComps,
+                                mediaComps,
+                                legacy(after)
+                        );
+                        p.spigot().sendMessage(finalMsg);
+
+                        if (ping) {
+                            try { p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1337F, 0.9F); } catch (Throwable ignored) {}
+                        }
+                    }
+                });
+            }
+        }
     }
 
     /* ===================== Reports (MC -> Discord) ===================== */
@@ -1407,8 +1382,6 @@ public class DiscordBridge extends ListenerAdapter
         if (dq.isEmpty()) byPlayer.remove(key);
     }
 
-    private static String safe(String s) { return s == null ? "" : s; }
-
     /* ===================== Startup auto-archive ===================== */
     private void autoArchiveExistingReportsOnStartup() {
         TextChannel reports = getReportsChannel();
@@ -1472,7 +1445,7 @@ public class DiscordBridge extends ListenerAdapter
                         case "reported" -> reported = val;
                         case "reason" -> reason = val;
                         case "coordinates" -> {
-                            int[] parsed = parseCoords(val);
+                            int[] parsed = Utils.parseCoords(val);
                             if (parsed != null) { x = parsed[0]; y = parsed[1]; z = parsed[2]; }
                         }
                     }
@@ -1528,70 +1501,8 @@ public class DiscordBridge extends ListenerAdapter
                 .setTimestamp(Instant.now());
     }
 
-    private int[] parseCoords(String s) {
-        try {
-            String t = s.replace(",", " ").replace("(", " ").replace(")", " ").trim();
-            String tl = t.toLowerCase(Locale.ENGLISH);
-
-            int xi = tl.indexOf("x:");
-            int yi = tl.indexOf("y:");
-            int zi = tl.indexOf("z:");
-            if (xi < 0 || yi < 0 || zi < 0) return null;
-
-            int xEnd = yi > xi ? yi : t.length();
-            int yEnd = zi > yi ? zi : t.length();
-            int zEnd = t.length();
-
-            int x = Integer.parseInt(t.substring(xi + 2, xEnd).replaceAll("[^\\d\\-]", "").trim());
-            int y = Integer.parseInt(t.substring(yi + 2, yEnd).replaceAll("[^\\d\\-]", "").trim());
-            int z = Integer.parseInt(t.substring(zi + 2, zEnd).replaceAll("[^\\d\\-]", "").trim());
-            return new int[]{x, y, z};
-        } catch (Exception e) {
-            return null;
-        }
-    }
 
     /* -------------------------- Server / Player embeds -------------------------- */
-    /** True for ranks considered Staff in /list. MB is intentionally not staff. */
-    private static boolean isStaffRank(LoginService.Rank r) {
-        if (r == null) return false;
-        return switch (r) {
-            case OPERATOR, ADMIN, STAFF -> true;
-            default -> false; // MB, VIP, and DEFAULT fall here
-        };
-    }
-
-    /** DM a user by Discord ID. Returns true if the request was queued. */
-    public boolean dm(long discordId, String content) {
-        if (jda == null) return false;
-        try {
-            jda.retrieveUserById(discordId).queue(user -> {
-                user.openPrivateChannel().queue(ch -> ch.sendMessage(content).queue());
-            });
-            return true;
-        } catch (Exception e) {
-            plugin.getLogger().warning("[Discord] DM failed for " + discordId + ": " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Discord-safe rank prefix that mirrors the in-game style:
-     * OP • Player, ADMIN • Player, STAFF • Player, MB • Player, VIP • Player.
-     * Minecraft color codes do not render in Discord, so bold text is used instead.
-     */
-    private static String discordRankPrefix(LoginService.Rank r) {
-        if (r == null) return "";
-        return switch (r) {
-            case OPERATOR -> "**OP** • ";
-            case ADMIN    -> "**ADMIN** • ";
-            case STAFF    -> "**STAFF** • ";
-            case MB       -> "**MB** • ";
-            case VIP      -> "**VIP** • ";
-            default       -> "";
-        };
-    }
-
     private void sendServerStartEmbed() {
         TextChannel ch = getChatChannel();
         if (ch == null) return;
@@ -1601,9 +1512,6 @@ public class DiscordBridge extends ListenerAdapter
                 .setDescription("**:green_square: Server has started!**");
         ch.sendMessageEmbeds(eb.build()).queue();
     }
-
-
-
     private void sendUpdateEmbed(String update_message, Player p) {
         TextChannel ch = getStaffLogsChannel();
         if (ch == null) return;
@@ -1617,7 +1525,6 @@ public class DiscordBridge extends ListenerAdapter
                 .setDescription("**:yellow_square: " + update_message + " **");
         ch.sendMessageEmbeds(eb.build()).queue();
     }
-
     public void sendGenericEmbed(String msg, Color color, String sender, String avatarurl ,String channel) {
         TextChannel ch;
         switch (channel) {
@@ -1639,7 +1546,6 @@ public class DiscordBridge extends ListenerAdapter
                 .setDescription(msg);
         ch.sendMessageEmbeds(eb.build()).queue();
     }
-
     private void sendVanishEmbed(Player p, String message) {
         TextChannel ch = getStaffLogsChannel();
         if (ch == null) return;
@@ -1652,7 +1558,6 @@ public class DiscordBridge extends ListenerAdapter
                 .setAuthor(name + " " + message, null, headurl);
         ch.sendMessageEmbeds(eb.build()).queue();
     }
-
     private void sendServerStopEmbedBlocking() {
         TextChannel ch = getChatChannel();
         if (ch == null) return;
@@ -1666,12 +1571,6 @@ public class DiscordBridge extends ListenerAdapter
             plugin.getLogger().warning("[Discord] Stop embed failed: " + t.getMessage());
         }
     }
-
-    /* Small circular head via Author icon (Discord renders it round). */
-    private static String playerHeadUrl(Player p) {
-        return "https://minotar.net/helm/" + p.getName() + "/64.png";
-    }
-
     private void sendPlayerJoinEmbed(Player p) {
         if (!plugin.isDiscordChatBridgeEnabled()) return;
         TextChannel ch = getChatChannel();
@@ -1739,112 +1638,49 @@ public class DiscordBridge extends ListenerAdapter
             sendVanishEmbed(e.getPlayer(), "has unvanished");
         }
     }
+    /* ---------------------- Public chat: MC -> Discord ---------------------- */
+    public void sendPublicMessageFromMinecraft(Player player, String message) {
+        if (!plugin.isDiscordChatBridgeEnabled()) return;
+        TextChannel ch = getChatChannel();
+        if (ch == null) return;
 
-    /* ------------------------------ Helpers ------------------------------ */
-    private static String stripAllColors(String s) {
-        if (s == null) return "";
-        // First remove MiniMessage tags like <red>, <bold>, <hover:...>, etc.
-        String noMini = stripMiniMessageTags(s);
-        // Then handle legacy & / § colors
-        String translated = HexColorUtil.translate(noMini);
-        return ChatColor.stripColor(translated);
-    }
+        String template = plugin.getConfig().getString(
+                "discord.chat.mc-to-discord-format",
+                "**%rank%%player%** » %message%"
+        );
 
-    private String resolveLuckPermsPrefix(Player p) {
-        try {
-            var lp = net.luckperms.api.LuckPermsProvider.get();
-            var user = lp.getUserManager().getUser(p.getUniqueId());
-            if (user == null) return null;
-            return user.getCachedData().getMetaData().getPrefix();
-        } catch (Throwable ignored) {
-            return null;
+        // Discord should show the server rank, not the player's guild/tag/LuckPerms prefix.
+        // Example: [Dev] pixelpaladinn instead of [Boss] pixelpaladinn.
+        String rankPrefix = rankPrefixForDiscord(player);
+
+        String out = template
+                // Keep this replacement for older configs that used %luckperms_prefix%; it now resolves to the real rank.
+                .replace("%luckperms_prefix%", rankPrefix)
+                .replace("%rank%", rankPrefix)
+                .replace("%rank_prefix%", rankPrefix)
+                .replace("%player%", player.getName())
+                .replace("%message%", replaceLinksWithMediaTag(stripAllColors(message)));
+
+        String safeOut = antiPingEveryoneHere(out);
+
+        if (plugin.getConfig().getBoolean("discord.use-embeds", false)) {
+            ch.sendMessageEmbeds(new EmbedBuilder().setDescription(safeOut).build()).queue(
+                    ok -> {},
+                    err -> {
+                        plugin.getLogger().warning("[Discord] Failed to send public chat embed, trying plain message: " + err.getMessage());
+                        ch.sendMessage(safeOut).queue(
+                                ok2 -> {},
+                                err2 -> plugin.getLogger().warning("[Discord] Failed to send public chat message: " + err2.getMessage())
+                        );
+                    }
+            );
+        } else {
+            ch.sendMessage(safeOut).queue(
+                    ok -> {},
+                    err -> plugin.getLogger().warning("[Discord] Failed to send public chat message: " + err.getMessage())
+            );
         }
     }
-
-    private static String toLegacyHex(java.awt.Color c) {
-        String hex = String.format("%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
-        return "&x&" + hex.charAt(0) + "&" + hex.charAt(1)
-                + "&" + hex.charAt(2) + "&" + hex.charAt(3)
-                + "&" + hex.charAt(4) + "&" + hex.charAt(5);
-    }
-
-    /** Prevents @everyone / @here from pinging by inserting a zero-width space. */
-    private static String antiPingEveryoneHere(String s) {
-        if (s == null) return null;
-        return s.replace("@everyone", "@\u200Beveryone")
-                .replace("@here", "@\u200Bhere");
-    }
-
-    // Strip MiniMessage-style tags like <red>, <bold>, <hover:...>, </click>, <gradient:#fff:#000>, etc.
-    private static final Pattern MINIMESSAGE_TAG = Pattern.compile("<[^>]+>");
-
-    private static String stripMiniMessageTags(String s) {
-        if (s == null) return "";
-        return MINIMESSAGE_TAG.matcher(s).replaceAll("");
-    }
-
-    // Every visible link sent through the Discord bridge is represented as [Media].
-    // In Discord this is still clickable through markdown: [Media](https://example.com/file.png).
-    private static final Pattern ANY_URL = Pattern.compile("(?i)https?://[^\\s<>()]+", Pattern.CASE_INSENSITIVE);
-
-    private static List<String> extractAllUrls(String text) {
-        java.util.ArrayList<String> out = new java.util.ArrayList<>();
-        if (text != null && !text.isEmpty()) {
-            Matcher m = ANY_URL.matcher(text);
-            while (m.find()) out.add(trimTrailingUrlPunctuation(m.group()));
-        }
-        return out;
-    }
-
-    private static String stripAllUrls(String text) {
-        if (text == null || text.isEmpty()) return "";
-        return cleanupMediaSpacing(ANY_URL.matcher(text).replaceAll(""));
-    }
-
-    private static String replaceLinksWithMediaTag(String text) {
-        if (text == null || text.isEmpty()) return "";
-        Matcher m = ANY_URL.matcher(text);
-        StringBuffer sb = new StringBuffer();
-        while (m.find()) {
-            String raw = m.group();
-            String url = trimTrailingUrlPunctuation(raw);
-            String trailing = raw.substring(url.length());
-            m.appendReplacement(sb, Matcher.quoteReplacement("[Media](" + url + ")" + trailing));
-        }
-        m.appendTail(sb);
-        return cleanupMediaSpacing(sb.toString());
-    }
-
-    private static String cleanupMediaSpacing(String text) {
-        if (text == null || text.isEmpty()) return "";
-        return text
-                .replaceAll("(?i)(^|\\s)&\\s+(?=\\[Media])", "$1")
-                .replaceAll("(?i)(^|\\s)&(?=\\[Media])", "$1")
-                .replaceAll("(?i)\\[MEDIA\\]", "[Media]")
-                .replaceAll("\\s{2,}", " ")
-                .trim();
-    }
-
-    private static String trimTrailingUrlPunctuation(String url) {
-        if (url == null) return "";
-        while (!url.isEmpty() && ".,!?;:".indexOf(url.charAt(url.length() - 1)) >= 0) {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
-    }
-
-    private static boolean isMediaUrl(String url) {
-        if (url == null) return false;
-        String lower = url.toLowerCase(Locale.ROOT);
-        return lower.matches(".*\\.(png|jpe?g|gif|webp|bmp|mp4|mov|webm|m4v)(\\?.*)?$")
-                || lower.contains("cdn.discordapp.com/attachments/")
-                || lower.contains("media.discordapp.net/attachments/")
-                || lower.contains("tenor.com/view/")
-                || lower.contains("media.tenor.com/")
-                || lower.contains("giphy.com/gifs/")
-                || lower.contains("media.giphy.com/");
-    }
-
     private static void addEmbedMediaPlaceholders(Message message, java.util.List<String> mediaUrls) {
         if (message == null) return;
         for (MessageEmbed embed : message.getEmbeds()) {
@@ -1860,82 +1696,41 @@ public class DiscordBridge extends ListenerAdapter
         }
     }
 
-    private static BaseComponent[] legacy(String ampersandColored) {
-        return TextComponent.fromLegacyText(HexColorUtil.translate(ampersandColored));
-    }
+    public void sandboxSeesAll(String playerName, String fileName, int FileSize) {
+        File logFile = new File(plugin.getDataFolder(), "schematics.yml");
+        FileConfiguration config = YamlConfiguration.loadConfiguration(logFile);
 
-    private static BaseComponent[] join(BaseComponent[]... arrays) {
-        java.util.ArrayList<BaseComponent> list = new java.util.ArrayList<>();
-        for (BaseComponent[] a : arrays) {
-            if (a != null) {
-                Collections.addAll(list, a);
-            }
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String formattedFileSize = (FileSize / 1024 / 1024) + " MB).";
+        String entry = fileName + " (Uploaded: " + timestamp + " FileSize: " + formattedFileSize + ")";
+
+        List<String> userSchematics = config.getStringList(playerName + ".Uploaded Schematics");
+        userSchematics.add(entry);
+
+        config.set(playerName + ".Uploaded Schems", userSchematics);
+
+        try {
+            config.save(logFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not save schematics.yml: " + e.getMessage());
         }
-        return list.toArray(new BaseComponent[0]);
     }
 
-    private static String firstClickableMediaUrl(java.util.List<String> mediaUrls) {
-        if (mediaUrls == null) return null;
-        for (String url : mediaUrls) {
-            if (url != null && url.toLowerCase(Locale.ROOT).startsWith("http")) {
-                return url;
-            }
+    // ===== Used by older moderation commands (kept for now but unused) =====
+        private record ParseResult(boolean ok, boolean permanent, String durationToken, String error) {
+
+        static ParseResult okPerm() {
+            return new ParseResult(true, true, null, null);
         }
-        return null;
-    }
 
-    private static BaseComponent[] clickableMediaTagOrLegacy(String labelAmp, String url) {
-        if (url == null || url.isBlank()) return legacy(labelAmp);
-        return clickableMediaTag(labelAmp, url);
-    }
-
-    private static BaseComponent[] clickableMediaTag(String labelAmp, String url) {
-        BaseComponent[] comps = legacy(labelAmp); // includes &e
-        ClickEvent click = new ClickEvent(ClickEvent.Action.OPEN_URL, url);
-        HoverEvent hover = new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                new ComponentBuilder(HexColorUtil.translate("&6&oClick to view")).create());
-        for (BaseComponent c : comps) {
-            c.setClickEvent(click);
-            c.setHoverEvent(hover);
+        static ParseResult okWith(String tok) {
+            return new ParseResult(true, false, tok, null);
         }
-        return comps;
+
+        static ParseResult fail(String msg) {
+            return new ParseResult(false, false, null, msg);
+        }
     }
-
-    /** Did the plain message contain this MC name (name or @name) as a token? */
-    private static boolean messageMentions(String content, String mcName) {
-        if (content == null || mcName == null || mcName.isEmpty()) return false;
-        String atPattern = "(?i)(?<!\\S)@(" + Pattern.quote(mcName) + ")(?!\\w)";
-        String namePattern = "(?i)(?<!\\w)(" + Pattern.quote(mcName) + ")(?!\\w)";
-        return Pattern.compile(atPattern).matcher(content).find()
-                || Pattern.compile(namePattern).matcher(content).find();
-    }
-
-    /**
-     * Public chat default: highlight then reset (&r).
-     */
-    private static String highlightDiscordMentionAmpersand(String amp, String mcName) {
-        return highlightDiscordMentionAmpersand(amp, mcName, "&r");
-    }
-
-    /**
-     * Highlights the given Minecraft player's name (and @name) in YELLOW for that player only.
-     * 'postColor' is injected right after the mention so formatting resumes with that color.
-     * Works on the ampersand-colored string (before ChatColor translation).
-     */
-    private static String highlightDiscordMentionAmpersand(String amp, String mcName, String postColor) {
-        if (amp == null || mcName == null || mcName.isEmpty()) return amp;
-        if (postColor == null) postColor = "&r";
-
-        String atPattern = "(?i)(?<!\\S)(@)(" + Pattern.quote(mcName) + ")(?!\\w)";
-        amp = amp.replaceAll(atPattern, "&e$1$2" + postColor);
-
-        String namePattern = "(?i)(?<![\\w@])(" + Pattern.quote(mcName) + ")(?!\\w)";
-        amp = amp.replaceAll(namePattern, "&e$1" + postColor);
-
-        amp = amp.replace("  ", " ");
-        return amp;
-    }
-
     private boolean hasRole(Member m, String roleId) {
         if (m == null || roleId == null) return false;
         for (Role r : m.getRoles()) {
@@ -1962,38 +1757,5 @@ public class DiscordBridge extends ListenerAdapter
         s.add(ROLE_MOD);     // Staff
         s.add(ROLE_MB);
         return s;
-    }
-
-    private LoginService.Rank resolveRankForName(String mcName) {
-        try {
-            Player p = Bukkit.getPlayerExact(mcName);
-            if (p != null) {
-                return plugin.getLoginService().getRank(p);
-            }
-        } catch (Throwable ignored) {}
-
-        try {
-            var lp = net.luckperms.api.LuckPermsProvider.get();
-            var um = lp.getUserManager();
-            UUID uuid = um.lookupUniqueId(mcName).get(3, java.util.concurrent.TimeUnit.SECONDS);
-            if (uuid == null) return LoginService.Rank.DEFAULT;
-
-            var user = um.loadUser(uuid).get(3, java.util.concurrent.TimeUnit.SECONDS);
-            if (user == null) return LoginService.Rank.DEFAULT;
-
-            String group = user.getPrimaryGroup();
-            if (group == null) return LoginService.Rank.DEFAULT;
-
-            switch (group.toLowerCase(java.util.Locale.ENGLISH)) {
-                case "operator":      return LoginService.Rank.OPERATOR;
-                case "administrator": return LoginService.Rank.ADMIN;
-                case "staff":         return LoginService.Rank.STAFF;
-                case "masterbuilder": return LoginService.Rank.MB;
-                case "vip":           return LoginService.Rank.VIP;
-                default:              return LoginService.Rank.DEFAULT;
-            }
-        } catch (Throwable ignored) {
-            return LoginService.Rank.DEFAULT;
-        }
     }
 }

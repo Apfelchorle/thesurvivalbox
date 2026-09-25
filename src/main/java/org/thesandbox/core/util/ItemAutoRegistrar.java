@@ -50,7 +50,7 @@ public final class ItemAutoRegistrar {
             if (!Item.class.isAssignableFrom(clazz)) continue;
             if (clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) continue;
 
-            Object instance = constructBest(clazz, injector);
+            Object instance = constructBest(plugin, clazz, injector);
             if (instance == null) {
                 plugin.getLogger().warning("[ItemAutoRegistrar] Could not construct " + clazz.getName() + " (no suitable constructor).");
                 continue;
@@ -86,7 +86,7 @@ public final class ItemAutoRegistrar {
         try {
             CodeSource src = plugin.getClass().getProtectionDomain().getCodeSource();
             if (src == null) return list;
-            String path = URLDecoder.decode(src.getLocation().getPath(), StandardCharsets.UTF_8.name());
+            String path = URLDecoder.decode(src.getLocation().getPath(), StandardCharsets.UTF_8);
 
             try (JarInputStream jis = new JarInputStream(new URL("file", null, path).openStream())) {
                 JarEntry e;
@@ -111,16 +111,28 @@ public final class ItemAutoRegistrar {
         return list;
     }
 
-    private static Object constructBest(Class<?> clazz, Map<Class<?>, Object> injector) {
+    private static Object constructBest(JavaPlugin plugin, Class<?> clazz, Map<Class<?>, Object> injector) {
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
         Arrays.sort(ctors, Comparator.comparingInt((Constructor<?> c) -> c.getParameterCount()).reversed());
         for (Constructor<?> c : ctors) {
+            Class<?>[] paramTypes = c.getParameterTypes();
             try {
                 Object[] args = buildArgsFor(c.getParameterTypes(), injector);
-                if (args == null) continue;
+                if (args == null) {
+                    for (Class<?> pt : paramTypes) {
+                        if (findAssignable(injector, pt) == null) {
+                            plugin.getLogger().warning("[ItemAutoRegistrar] " + clazz.getSimpleName()
+                                    + " ctor needs " + pt.getName() + " but no matching service was found in the injector.");
+                        }
+                    }
+                    continue;
+                }
                 c.setAccessible(true);
                 return c.newInstance(args);
-            } catch (ReflectiveOperationException ignored) { }
+            } catch (ReflectiveOperationException e) {
+                plugin.getLogger().warning("[ItemAutoRegistrar] " + clazz.getSimpleName()
+                        + " ctor threw during construction: " + (e.getCause() != null ? e.getCause() : e));
+            }
         }
         return null;
     }

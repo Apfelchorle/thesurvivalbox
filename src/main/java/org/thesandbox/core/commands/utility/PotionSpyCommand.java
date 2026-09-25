@@ -6,7 +6,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.ThrownPotion;
-import org.thesandbox.core.PotionSpyService; // <-- UPDATED PACKAGE
+import org.thesandbox.core.services.PotionSpyService; // <-- UPDATED PACKAGE
 import org.thesandbox.core.commands.CommandMessages;
 import org.thesandbox.core.commands.ISubCommand;
 
