@@ -12,7 +12,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.thesandbox.core.commands.Admin.UpdateLocalCommand;
 import org.thesandbox.core.commands.CommandManager;
-import org.thesandbox.core.commands.dev.gayCommand;
 import org.thesandbox.core.fun.LoginMessages;
 import org.thesandbox.core.fun.Utils;
 import org.thesandbox.core.fun.items.FloatBoatItem;
@@ -60,7 +59,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
     private LiteBansWarningListener liteBansWarningListener;
     private UpdateTarget updateTarget;
     private UpdateLocalCommand updateLocalCommand;
-    private gayCommand gaycommand;
 
     private GenericListener genericListener;
 
@@ -227,8 +225,6 @@ public class TheSandboxCore extends JavaPlugin implements Listener {
         discord.start();
 
         this.updateLocalCommand = new UpdateLocalCommand(this, discord);
-        this.gaycommand = new gayCommand(this);
-
         AutoClearService autoClearService = new AutoClearService();
         getServer().getPluginManager().registerEvents(new AutoClearListener(autoClearService), this);
 
