@@ -41,7 +41,10 @@ public class Utils {
     public static final Pattern ANY_URL = Pattern.compile("(?i)https?://[^\\s<>()]+", Pattern.CASE_INSENSITIVE);
 
     public static TheSandboxCore getTheSandboxCore() {
-        return plugin;
+        if (plugin == null) {
+            return plugin;
+        }
+        return TheSandboxCore.getPlugin(TheSandboxCore.class);
     }
     public static void dump(Throwable t, String msg) {
         Logger logger = plugin.getLogger();
