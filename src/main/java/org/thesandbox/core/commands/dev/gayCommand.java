@@ -16,7 +16,12 @@ import java.util.List;
 public class gayCommand implements ISubCommand {
 
 
-    private static final TheSandboxCore plugin = Utils.getTheSandboxCore();
+    private static TheSandboxCore plugin;
+
+
+    public gayCommand(TheSandboxCore plugin) {
+        this.plugin = plugin;
+    }
     private final LoginService loginService = plugin.getLoginService();
 
     @Override
