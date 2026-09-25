@@ -26,27 +26,13 @@ commands:
 
   opme:
     description: toggle op status
-
-  waterflow:
-    permission: sandbox.staff
-
-  jew:
-    permission: sandbox.staff
   updateallproxies:
     permission: sandbox.superuser
-
   updatelocal:
     permission: sandbox.superuser
   dismount:
     description: Force dismount from an Entity.
     usage: /dismount
-
-  opall:
-    description: Op Everyone
-    usage: /opall
-    permission: sandbox.default
-    aliases: [freeop]
-
   discord:
     description: Sends Discord Invite
     usage: /discord
@@ -59,10 +45,6 @@ commands:
     aliases: [jp]
   coins:
     description: Displays Your Balance
-    permission: sandbox.default
-  shop:
-    description: Opens The Shop
-    usage: /shop
     permission: sandbox.default
   skull:
     description: Give yourself a player skull
@@ -133,33 +115,6 @@ commands:
     usage: /<command> [player]
     aliases: [nc]
     permission: sandbox.staff
-
-  nickgradient:
-    description: Add a gradient to your nickname.
-    usage: /nickgradient <hex|random> <hex|random> <nick>
-    aliases: [nickgr]
-    permission: sandbox.default
-
-  nicknyan:
-    description: Randomize your nick colors
-    usage: /nicknyan <nick>
-    permission: sandbox.default
-
-  nickrainbow:
-    description: Add rainbow to your nickname
-    usage: /nickrainbow <nick>
-    permission: sandbox.default
-
-  tagnyan:
-    description: Randomize your tag colors
-    usage: /tagnyan <nick>
-    permission: sandbox.default
-
-  tagrainbow:
-    description: Add rainbow to your tag
-    usage: /tagrainbow <tag>
-    permission: sandbox.default
-
   sudo:
     description: Send a command as someone else
     usage: /sudo <player>
@@ -178,32 +133,10 @@ commands:
     permission: sandbox.admin
     aliases: [kickall]
 
-  localspawn:
-    description: Teleport to spawn point for current world instead of Essentials spawn
-    usage: /localspawn
-    permission: sandbox.default
-    aliases: [worldspawn,gotospawn]
-
-  glow:
-    description: Toggle the glowing outline effect for your player
-    usage: /glow
-    permission: sandbox.default
-
-  gravity:
-    description: Toggle your gravity on or off.
-    usage: /gravity
-    permission: sandbox.default
-
   explode:
     description: Explode another player! KABOOM!
     usage: /explode <player>
     permission: sandbox.admin
-
-  heal:
-    description: Heal yourself or another user.
-    usage: /heal <player>
-    permission: sandbox.default
-
   managechat:
     description: Mute or clear public chat.
     usage: /managechat <mute|clear|forceclear>
@@ -213,80 +146,61 @@ commands:
   debugstick:
     description: Obtain a Debug Stick
     usage: /debugstick
-    permission: sandbox.default
+    permission: sandbox.superuser
     aliases: [deb]
-
-  loginmessage:
-    description: Set Your Login Message!
-    permission: sandbox.default
-    alias: [lmsg]
-
   update:
     description: Update TheSandBoxCore Plugin
     permission: sandbox.superuser
     aliases: [pyrorefrence]
-
   gtfo:
     description: Ban Said Player For 24h
     permission: sandbox.staff
-
-
   denick:
     description: Remove all online nicknames
     usage: /denick
     permission: sandbox.staff
-
   deafen:
     description: What the hell is even that?
     usage: /deafen
     permission: sandbox.admin
-
   disguisetoggle:
     description: Enable or disable disguises for all online players
     usage: /disguisetoggle
     permission: sandbox.staff
     aliases: [dtoggle]
-
   entitywipe:
     description: Remove server entities (items, boats, minecarts, and more!)
     usage: /entitywipe [entity | -a]
     permission: sandbox.staff
     aliases: [ew, rd]
-
-  colorme:
-    description: Change your nickname color.
-    usage: /colorme <color|list>
-    permission: sandbox.default
-
   clearinventory:
     description: Clear your inventory, others' inventory, or everyone's inventory
     usage: /clearinventory <player|all>
-    permission: sandbox.default
+    permission: sandbox.superuser
     aliases: [clearinv,ci,cinv]
-
   adventure:
     description: Change your gamemode to adventure or set another's.
     usage: /<command> [player | -a]
     aliases: [gma]
-    permission: sandbox.default
+    permission: sandbox.superuser
 
   creative:
     description: Change your gamemode to creative or set another's.
     usage: /<command> [player | -a]
     aliases: [gmc]
-    permission: sandbox.default
+    permission: sandbox.superuser
 
   survival:
     description: Change your gamemode to survival or set another's.
     usage: /<command> [player | -a]
     aliases: [gms]
-    permission: sandbox.default
+    permission: sandbox.superuser
 
   spectator:
     description: Change your gamemode to spectator or set another's.
     usage: /<command> [player | -a]
     aliases: [gmsp]
-    permission: sandbox.default
+    permission: sandbox.superuser
 
   staffchat:
     description: Toggle or send staff chat
@@ -339,36 +253,12 @@ commands:
     usage: "/blockcmd <player|all|purge>"
     permission: sandbox.staff
     permission-message: "&cYou do not have permission to use this command."
-
-  tag:
-    description: Set a custom prefix.
-    usage: "/tag [-save] <set <tag..> | list | gradient <hex> <hex> <tag..> | off | clear <player> | clearall>"
-    permission: sandbox.default
-
-  guild:
-    description: Guild commands
-    usage: /guild
-    aliases: [g]
-    permission: sandbox.default
-
-  gchat:
-    description: Guild chat
-    usage: /gchat [message]
-    aliases: [gc]
-    permission: sandbox.default
-
   aeclear:
     description: Clears lingering potion area effect clouds.
     usage: /aeclear
     aliases: [aec]
     permission: sandbox.staff
     permission-message: You don't have permission to use this command.
-
-  world:
-    description: Teleport to a specified world.
-    usage: /world <world>
-    permission: sandbox.default
-
   marrytag:
     description: AreYouAreYouCommingToTheTreeTheyStrungUpAManTheySayHeMurderedThree
     permission: sandbox.default
@@ -382,40 +272,16 @@ commands:
     description: Marriage.
     permission: sandbox.default
     aliases: [marriage,]
-
-  masterbuilderworld:
-    description: Teleport to the masterbuilderworld.
-    usage: /masterbuilderworld
-    aliases: [mbw]
-    permission: sandbox.default
-
   gamemode:
     description: Change your or another player's gamemode
     usage: /gamemode <gamemode> <player>
     aliases: [gm]
-    permission: sandbox.default
+    permission: sandbox.superuser
     permission-message: "&cYou do not have permission to use this command."
-
-  overworld:
-    description: Teleport to the overworld.
-    usage: /overworld
-    permission: sandbox.default
-
-  nether:
-    description: Teleport to the nether.
-    usage: /nether
-    permission: sandbox.default
-
-  end:
-    description: Teleport to the end.
-    usage: /end
-    permission: sandbox.default
-
   wildcard:
     description: Run any command for every online player. Use "?" as an optional placeholder for the player's name; if omitted, the name is appended.
     usage: /wildcard <command>
     permission: sandbox.staff
-
   loop:
     description: (DEBUG) Loop a specified command for a certain amount
     usage: /loop <amount> <command>
