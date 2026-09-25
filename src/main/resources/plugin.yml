@@ -21,6 +21,9 @@ loadbefore: [Essentials, EssentialsX, WorldGuard]
 
 commands:
 
+  gay:
+    description: does stuff
+
   chatfilter:
     description: Toggles ChatFilter
 
